@@ -5,4 +5,4 @@
 - ROS Melodic
 - OpenCV 4
 
-[x] 노트북 설정
+- [x] 노트북 설정
