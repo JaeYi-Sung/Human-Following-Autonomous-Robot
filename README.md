@@ -18,5 +18,5 @@
 ### Process
 - [x] 개발환경 구축
 - [x] 알고리즘 자료 조사
-- [x] ArUco markers 데이터세트 만들기
+- [ ] ArUco markers 데이터세트 만들기
 - [ ] Yolo 학습시키기
