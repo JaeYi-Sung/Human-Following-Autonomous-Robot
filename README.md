@@ -21,7 +21,7 @@
 - [x] ArUco markers 데이터세트 만들기
   - [x] 이미지 촬영하기
   - [x] 이미지 라벨링
-- [x] 만든 데이터세트 YOLOv5로 모델 학습
+- [x] Custom Dataset YOLOv5 모델 학습
 - [x] 모델 테스팅
 - [ ] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
 - [ ] 모델 과적합 방지 방법 적용
