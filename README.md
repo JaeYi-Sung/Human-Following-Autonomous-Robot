@@ -23,5 +23,5 @@
   - [x] 이미지 라벨링
 - [x] Custom Dataset YOLOv5 모델 학습
 - [x] 모델 테스팅
-- [ ] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
+- [x] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
 - [ ] 모델 과적합 방지 방법 적용
