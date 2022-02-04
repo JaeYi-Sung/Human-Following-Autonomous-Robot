@@ -24,4 +24,5 @@
 - [x] Custom Dataset YOLOv5 모델 학습
 - [x] 모델 테스팅
 - [x] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
-- [ ] 모델 과적합 방지 방법 적용
+- [ ] 성능 향상 공부
+- [ ] Motion Detection
