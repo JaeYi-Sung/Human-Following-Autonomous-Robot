@@ -4,6 +4,7 @@
 - Ubuntu Linux v18.04 - JetPack 4.3
 - ROS Melodic
 - OpenCV 4
+- Jupyter Lab
 
 
 ### Techs that we're going to use
