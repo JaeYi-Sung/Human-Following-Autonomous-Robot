@@ -10,7 +10,8 @@
 ### Techs that we're going to use
 <p align="center">
   <img src="https://img.shields.io/badge/Pytorch-EE4C2C?style=flat-square&logo=Pytorch&logoColor=white"/></a> &nbsp     
-  <img src="https://img.shields.io/badge/YOLOv5-00FFFF?style=flat-square&logo=Pytorch&logoColor=white"/></a> &nbsp   
+  <img src="https://img.shields.io/badge/Tensorflow-FF6F00?style=flat-square&logo=Tensorflow&logoColor=white"/></a> &nbsp     
+  <img src="https://img.shields.io/badge/YOLOv4-00FFFF?style=flat-square&logo=Darknet&logoColor=white"/></a> &nbsp   
   <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=flat-square&logo=OpenCV&logoColor=white"/></a> &nbsp
   <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/></a> &nbsp 
   <img src="https://img.shields.io/badge/ROS-22314E?style=flat-square&logo=ROS&logoColor=white"/></a> &nbsp 
@@ -25,5 +26,9 @@
 - [x] Custom Dataset YOLOv5 모델 학습
 - [x] 모델 테스팅
 - [x] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
-- [ ] 성능 향상 공부
-- [ ] Motion Detection
+- [x] 성능 향상 공부
+- [x] 계획 수정
+- [ ] Yolov4 개발 환경 설치
+- [ ] 데이터셋 수정
+- [ ] OpenCV ArUco marker 모듈 사용
+- [ ] Gesture Recognition
