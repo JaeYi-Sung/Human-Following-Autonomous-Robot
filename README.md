@@ -3,7 +3,11 @@
 ### Development Environment
 - Ubuntu Linux v18.04 - JetPack 4.3
 - ROS Melodic
-- OpenCV 4
+- OpenCV 4.2
+- Tensorflow 2.3.1
+- CUDA 10.2
+- cuDNN 7.6.5
+- nvidia driver 470
 - Jupyter Lab
 
 
