@@ -28,7 +28,7 @@
 - [x] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
 - [x] 성능 향상 공부
 - [x] 계획 수정
-- [ ] Yolov4 개발 환경 설치
-- [ ] 데이터셋 수정
-- [ ] OpenCV ArUco marker 모듈 사용
+  - [x] Yolov4 개발 환경 설치
+  - [ ] 데이터셋 수정
+  - [x] OpenCV ArUco marker 모듈 사용
 - [ ] Gesture Recognition
