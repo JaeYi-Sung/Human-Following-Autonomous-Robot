@@ -27,12 +27,12 @@
 - [x] ArUco markers 데이터셋 만들기
   - [x] 이미지 촬영하기
   - [x] 이미지 라벨링
-- [x] Custom Dataset YOLOv5 모델 학습
+- [x] ArUco markers Dataset YOLOv5 모델 학습
 - [x] 모델 테스팅
-- [x] COCO Dataset와 Custom Dataset 합쳐서 모델 학습
+- [x] Person Dataset와 ArUco markers Dataset 합쳐서 모델 학습
 - [x] 성능 향상 공부
-- [x] 계획 수정: Yolo v4 에서 Yolo v5로 변경, Person 데이터셋 변경, OpenCV ArUco marker 모듈 사용
+- [x] 계획 수정: Yolo v4 에서 Yolo v5로 변경, Person Dataset 변경, OpenCV ArUco marker 모듈 사용
 - [x] Yolov4 개발 환경 구축
-- [x] Person 클래스 데이터셋 수정
-- [ ] Custom Dataset Yolov4 모델 학습
+- [x] Person Dataset 만들기
+- [ ] Person Dataset Yolov4 모델 학습
 - [ ] Gesture Recognition
