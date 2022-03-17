@@ -4,7 +4,7 @@
 - Ubuntu Linux v18.04 - JetPack 4.3
 - CUDA 10.2
 - cuDNN 7.6.5
-- Nividia Driver 470
+- nvidia driver 470
 - ROS Melodic
 - OpenCV 4.2
 - Tensorflow 2.3.1
