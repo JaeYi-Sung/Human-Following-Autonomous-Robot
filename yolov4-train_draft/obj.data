@@ -1,0 +1,32 @@
+classes = 5
+train = /home/erbl/Git/RealTime-Object-Detection/yolov4-train/data/train.txt
+valid = /home/erbl/Git/RealTime-Object-Detection/yolov4-train/data/test.txt
+names = /home/erbl/Git/RealTime-Object-Detection/yolov4-train/obj.names
+backup = /home/erbl/Git/RealTime-Object-Detection/yolov4-train/training
+Collecting PyQt5-Qt5>=5.15.2
+  Downloading PyQt5_Qt5-5.15.2-py3-none-manylinux2014_x86_64.whl (59.9 MB)
+     |████████████████████████████████| 59.9 MB 80 kB/s 
+Building wheels for collected packages: labelImg
+  Building wheel for labelImg (sCollecting PyQt5-Qt5>=5.15.2
+  Downloading PyQt5_Qt5-5.15.2-py3-none-manylinux2014_x86_64.whl (59.9 MB)
+     |████████████████████████████████| 59.9 MB 80 kB/s 
+Building wheels for collected packages: labelImg
+  Building wheel for labelImg (setup.py) ... done
+  Created wheel for labelImg: filename=labelImg-1.8.6-py2.py3-none-any.whl size=261544 sha256=e75a72d1bd8d0944a7ccea21a4dc1505f380b3ff074615807b498e48c9ce07bf
+  Stored in directory: /home/erbl/.cache/pip/wheels/6e/83/14/df9548a7a658185c419c9bb21eeae66b13307c28881a37e151
+Successfully built labelImg
+Installing collected packages: PyQt5-sip, PyQt5-Qt5, pyqt5, lxml, labelImg
+Successfully installed PyQt5-Qt5-5.15.2 PyQt5-sip-12.9.1 labelImg-1.8.6 lxml-4.8.0 pyqt5-5.15.6
+(labelimg) erbl@erbl-EX797:~$ labelImg
+Gtk-Message: 21:58:36.958: GtkDialog mapped without a transient parent. This is discouraged.
+Gtk-Message: 21:58:52.407: GtkDialog mapped without a transient parent. This is discouraged.
+Gtk-Message: 21:59:40.79etup.py) ... done
+  Created wheel for labelImg: filename=labelImg-1.8.6-py2.py3-none-any.whl size=261544 sha256=e75a72d1bd8d0944a7ccea21a4dc1505f380b3ff074615807b498e48c9ce07bf
+  Stored in directory: /home/erbl/.cache/pip/wheels/6e/83/14/df9548a7a658185c419c9bb21eeae66b13307c28881a37e151
+Successfully built labelImg
+Installing collected packages: PyQt5-sip, PyQt5-Qt5, pyqt5, lxml, labelImg
+Successfully installed PyQt5-Qt5-5.15.2 PyQt5-sip-12.9.1 labelImg-1.8.6 lxml-4.8.0 pyqt5-5.15.6
+(labelimg) erbl@erbl-EX797:~$ labelImg
+Gtk-Message: 21:58:36.958: GtkDialog mapped without a transient parent. This is discouraged.
+Gtk-Message: 21:58:52.407: GtkDialog mapped without a transient parent. This is discouraged.
+Gtk-Message: 21:59:40.79
