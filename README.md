@@ -31,8 +31,10 @@
 - [x] 모델 테스팅
 - [x] Person Dataset와 ArUco markers Dataset 합쳐서 모델 학습
 - [x] 성능 향상 공부
-- [x] 계획 수정: Yolo v4 에서 Yolo v5로 변경, Person Dataset 변경, OpenCV ArUco marker 모듈 사용
+- [x] 계획 수정: Yolo v5 에서 Yolo v4로 변경, Person Dataset 변경
+- [x] OpenCV ArUco marker 모듈 적용 시도
 - [x] Yolov4 개발 환경 구축
 - [x] Person Dataset 만들기
-- [ ] Person Dataset Yolov4 모델 학습
-- [ ] Gesture Recognition
+- [x] Person Dataset Yolov4 모델 학습
+- [ ] ArUco marker Dataset Yolov4 모델 학습
+- [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
