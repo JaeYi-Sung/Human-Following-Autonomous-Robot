@@ -36,5 +36,5 @@
 - [x] Yolov4 개발 환경 구축
 - [x] Person Dataset 만들기
 - [x] Person Dataset Yolov4 모델 학습
-- [ ] ArUco marker Dataset Yolov4 모델 학습
+- [x] ArUco marker Dataset Yolov4 모델 학습
 - [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
