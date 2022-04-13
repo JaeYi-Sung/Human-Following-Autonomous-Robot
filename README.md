@@ -27,14 +27,18 @@
 - [x] ArUco markers 데이터셋 만들기
   - [x] 이미지 촬영하기
   - [x] 이미지 라벨링
-- [x] ArUco markers Dataset YOLOv5 모델 학습
-- [x] 모델 테스팅
-- [x] Person Dataset와 ArUco markers Dataset 합쳐서 모델 학습
-- [x] 성능 향상 공부
-- [x] 계획 수정: Yolo v5 에서 Yolo v4로 변경, Person Dataset 변경
-- [x] OpenCV ArUco marker 모듈 적용 시도
-- [x] Yolov4 개발 환경 구축
-- [x] Person Dataset 만들기
-- [x] Person Dataset Yolov4 모델 학습
-- [x] ArUco marker Dataset Yolov4 모델 학습
+- [x] weights 만들기
+  - [x] ArUco markers Dataset YOLOv5 모델 학습
+  - [x] Person Dataset과 ArUco markers Dataset 합쳐서 Yolov5 모델 학습
+  - [x] 성능 향상 공부
+- [x] 계획 수정: YOLOv5 에서 YOLOv4로 변경, Person Dataset 변경, OpenCV의 aruco 모듈 적용
+- [x] Person Dataset: MobilityAids 사용
+- [x] OpenCV aruco 모듈 적용
+- [x] 계획 수정: Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
+- [x] ArUco markers YOLOv4 학습
+- [ ] weights 만들기
+  - [x] Yolov4 개발 환경 구축
+  - [x] Person Dataset 만들기
+  - [x] Person Dataset Yolov4 모델 학습
+  - [x] Person Dataset과 ArUco marker Dataset Yolov4 모델 학습
 - [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
