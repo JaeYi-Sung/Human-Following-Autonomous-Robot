@@ -29,12 +29,15 @@
   - [x] 이미지 라벨링
 - [x] weights 만들기
   - [x] ArUco markers Dataset YOLOv5 모델 학습
-  - [x] Person Dataset과 ArUco markers Dataset 합쳐서 Yolov5 모델 학습
+  - [x] Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv5 모델 학습 (COCO 2017 Dataset 사용)
   - [x] 성능 향상 공부
-- [x] 계획 수정: YOLOv5 에서 YOLOv4로 변경, Person Dataset 변경, OpenCV의 aruco 모듈 적용
-- [x] Person Dataset: MobilityAids 사용
-- [x] OpenCV aruco 모듈 적용
-- [x] 계획 수정: Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
+- [x] 계획 수정
+  - YOLOv5 에서 YOLOv4로 변경
+  - Person Dataset 변경
+  - ArUco markers Dataset YOLO 학습 대신, OpenCV의 aruco 모듈 적용
+- [x] Person Dataset YOLOv4 모델 학습 (MobilityAids 사용)
+- [x] OpenCV의 aruco 모듈 적용
+- [x] 계획 수정: OpenCV의 aruco 모듈 대신, Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
 - [ ] weights 만들기
   - [x] Yolov4 개발 환경 구축
   - [x] Person Dataset 만들기
