@@ -35,7 +35,6 @@
 - [x] Person Dataset: MobilityAids 사용
 - [x] OpenCV aruco 모듈 적용
 - [x] 계획 수정: Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
-- [x] ArUco markers YOLOv4 학습
 - [ ] weights 만들기
   - [x] Yolov4 개발 환경 구축
   - [x] Person Dataset 만들기
