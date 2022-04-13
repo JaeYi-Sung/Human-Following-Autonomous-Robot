@@ -35,12 +35,11 @@
   - YOLOv5 에서 YOLOv4로 변경
   - Person Dataset 변경
   - ArUco markers Dataset YOLO 학습 대신, OpenCV의 aruco 모듈 적용
-- [x] Person Dataset YOLOv4 모델 학습 (MobilityAids 사용)
 - [x] OpenCV의 aruco 모듈 적용
 - [x] 계획 수정: OpenCV의 aruco 모듈 대신, Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
 - [ ] weights 만들기
   - [x] Yolov4 개발 환경 구축
   - [x] Person Dataset 만들기
-  - [x] Person Dataset Yolov4 모델 학습
-  - [x] Person Dataset과 ArUco marker Dataset Yolov4 모델 학습
+  - [x] Person Dataset YOLOv4 모델 학습 (MobilityAids 사용)
+  - [x] Person Dataset과 ArUco marker Dataset YOLOv4 모델 학습
 - [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
