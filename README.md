@@ -37,7 +37,7 @@
   - ArUco markers Dataset YOLO 학습 대신, OpenCV의 aruco 모듈 적용
 - [x] OpenCV의 aruco 모듈 적용
 - [x] 계획 수정: OpenCV의 aruco 모듈 대신, Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
-- [ ] weights 만들기
+- [x] weights 만들기
   - [x] Yolov4 개발 환경 구축
   - [x] Person Dataset 만들기 (MobilityAids 사용)
   - [x] Person Dataset YOLOv4 모델 학습
