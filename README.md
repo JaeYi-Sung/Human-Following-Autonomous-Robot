@@ -42,5 +42,5 @@
   - [x] Person Dataset 만들기 (MobilityAids 사용)
   - [x] Person Dataset YOLOv4 모델 학습
   - [x] Person Dataset과 ArUco marker Dataset YOLOv4 모델 학습
-  - [ ] ArUco marker Dataset YOLOv4 모델 학습
+  - [x] ArUco marker Dataset YOLOv4 모델 학습
 - [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
