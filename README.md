@@ -43,5 +43,5 @@
   - [x] Person Dataset YOLOv4 모델 학습
   - [x] Person Dataset과 ArUco marker Dataset YOLOv4 모델 학습
   - [x] ArUco marker Dataset YOLOv4 모델 학습
-- [ ] ArUco marker Dataset & Person Dataset 시나리오에 맞게 수정
+- [x] ArUco marker Dataset & Person Dataset 시나리오에 맞게 수정
 - [ ] 특정 ArUco marker를 지닌 사용자 스위칭 기능
