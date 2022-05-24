@@ -229,11 +229,12 @@ def main(_argv):
 
     # ROS class init
     go = scout_pub_basic()
+    
     rate = rospy.Rate(60)
     
     # 타겟 설정을 위한 객체
     target = Target("0")
-
+    
     # while video is running
     while not rospy.is_shutdown():
 
