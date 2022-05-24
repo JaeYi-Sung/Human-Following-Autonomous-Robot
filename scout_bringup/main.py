@@ -41,6 +41,7 @@ from tensorflow.compat.v1 import InteractiveSession
 from deep_sort import preprocessing, nn_matching
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
+from target import Target
 import predict_object
 
 # 웹캠을 사용하려면 True, D435를 사용하려면 False
@@ -65,7 +66,7 @@ def main(_argv):
     
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
-    target_id = False
+    start_time = time.time()
 
     # y 증가: 아래 x 증가: 오른쪽
     # draw bbox on screen
@@ -82,34 +83,30 @@ def main(_argv):
             color = [i * 255 for i in color]
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
+            cv2.putText(frame, class_name,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
 
+    
     # draw bbox for all detections and find target marker's bbox
-    def find_target_marker_bbox(detections, target_marker):
-        target_marker_bbox_list = []        
+    def find_target_marker_bboxes(detections, target):
+        marker_bbox_list = []
 
         for detection in detections:
             bbox = detection.to_tlbr()
-            print("find_target_marker - bbox:", bbox)
             class_name = detection.get_class()
-            print("find_target_marker - class_name:", class_name)
             
             # find target marker's bbox
-            if class_name == target_marker: 
-                target_marker_bbox_list.append(bbox)
+            if class_name == target.marker: 
+                marker_bbox_list.append(bbox)
 
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name)
         
-        return target_marker_bbox_list
+        target.marker_bboxes = marker_bbox_list
 
-    # track people
-    def track_person(tracker, detections, target_marker_bbox_list):
-        nonlocal x, y, z, th, speed, turn, frame_num, key, target_id # go
-
-        # Find tracking a target        
-        track_id_list = []
-        person_id_to_bbox = {}
+    # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
+    # 아니라면, 기존의 track.id를 가진 사람 tracking
+    def track_person(tracker, detections, target):
+        nonlocal x, y, z, th, speed, turn, frame_num, key # go
 
         # Call the tracker
         tracker.predict()
@@ -120,7 +117,7 @@ def main(_argv):
         
         # tracker.lost가 True라면 Target lost
         if tracker.lost :
-            go.sendMsg(frame_num%2)
+            go.sendMsg(frame_num % 2)
         else :
             go.sendMsg(1)
 
@@ -128,51 +125,52 @@ def main(_argv):
         if tracker.lost: # 추적할 객체가 없다면 정지
             key = 'stop'
             print('There are no objects to track.')
-        else: # 추적할 객체가 있다면 동작
-            for track in tracker.tracks:
-                if not track.is_confirmed() or track.time_since_update > 1:
-                    continue 
-                
-                bbox = track.to_tlbr()
-                class_name = track.get_class()
-     
-                if target_id == False:           
-                    # Find person who has a targeted marker
-                    for marker_bbox in target_marker_bbox_list:
-                        if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
-                            target_id = track.track_id
-                            print("iffffffffffff")
-                            print("track.track_id ", track.track_id)
-                            break
-                        else:
-                            print("elseeeeeeeeeeee")
-                            target_id = False
+            return
+        
+        # 추적할 객체가 있다면 동작
+        for track in tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 1:
+                continue
+            
+            bbox = track.to_tlbr()
+            class_name = track.get_class()
+            
+            # target marker가 변한 경우, target id를 변경 (find the person who has a targeted marker)
+            if target.changed:
+                for marker_bbox in target.marker_bboxes:
+                    if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
+                        target.set_id(track.track_id)
+                        print("target id: ", target.get_id())
+                        break
+                    
+            # target id에 해당하지 않은 사람 객체 무시
+            if track.track_id != target.get_id(): continue
+            
+            # target id에 해당하는 사람 객체 tracking
+            
+            # cx, cy 계산 추가
+            w, h = int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1])
+            cx, cy = int(w/2 + bbox[0]), int(h/2 + bbox[1])
+            
+            # 사람과 로봇의 거리: person_distance
+            if not use_webcam:
+                person_distance = person_dist(depth_frame, cx, cy, h)
+                print('person distance : ', person_dist(depth_frame, cx, cy, h))
 
-                print('target_id: ',target_id)
-
-                # cx, cy 계산 추가
-                w, h = int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1])
-                cx, cy = int(w/2 + bbox[0]), int(h/2 + bbox[1])
-                
-                # 사람과 로봇의 거리: person_distance
-                if not use_webcam:
-                    person_distance = person_dist(depth_frame, cx, cy, h)
-                    print('person distance : ', person_dist(depth_frame, cx, cy, h))
-
-                # 직진 안전 구간 최대/최소값
-                stable_max_dist = 2500
-                stable_min_dist = 2000
-                
-                if person_distance < stable_min_dist: # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
-                    print('Too Close')
-                    key = 'stop'
-                else:
-                    print('key is NOT None')                 
-                    key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance)
-                
-                # draw bbox on screen
-                draw_bbox(bbox, frame, class_name, track.track_id)
-
+            # 직진 안전 구간 최대/최소값
+            stable_max_dist = 2500
+            stable_min_dist = 2000
+            
+            if person_distance < stable_min_dist: # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
+                print('Too Close')
+                key = 'stop'
+            else:
+                print('key is NOT None')                 
+                key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance)
+            
+            # draw bbox on screen
+            draw_bbox(bbox, frame, class_name, track.track_id)
+            break
 
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -184,17 +182,13 @@ def main(_argv):
 
     # calculate cosine distance metric
     metric_person = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
-    # metric_marker = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
 
     # initialize tracker
     tracker_person = Tracker(metric_person)
-    # tracker_marker = Tracker(metric_marker)
 
     # load configuration for object detector
     config = ConfigProto()
     config.gpu_options.allow_growth = True
-    #session = InteractiveSession(config=config)
-    #STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
 
 
@@ -235,8 +229,12 @@ def main(_argv):
 
     # ROS class init
     go = scout_pub_basic()
-    rate = rospy.Rate(60)    
-
+    
+    rate = rospy.Rate(60)
+    
+    # 타겟 설정을 위한 객체
+    target = Target("0")
+    
     # while video is running
     while not rospy.is_shutdown():
 
@@ -249,62 +247,65 @@ def main(_argv):
         else:
             print('Video has ended or failed, try a different video format!')
             break
-        frame_num +=1
         
-        # 좌/우 회전 한곗값 설정
+                # 좌/우 회전 한곗값 설정
         left_limit = frame.shape[1]//2 - 70
         right_limit = frame.shape[1]//2 + 70
-
-        if not use_webcam:
-            # 장애물 회피를 위한 ROI 디폴트 세팅하기 (현재는 10프레임만) 추가
-            if frame_num < 11 :
-                default.default_update(depth_frame)
-                continue
         
+        # 프레임 넘버 1 증가
+        frame_num +=1
         print('Frame #: ', frame_num)
-        #frame_size = frame.shape[:2]
+        
+        # 장애물 회피를 위한 ROI 디폴트 세팅하기 (현재는 10프레임만) 추가
+        if frame_num < 11 :
+            default.default_update(depth_frame)
+            continue
+        
+        # fps 측정을 위한 시작 시간 측정
+        frame_start_time = time.time()
+        
+        # 프레임 이미지 정보
         image_data = cv2.resize(frame, (input_size, input_size))
         image_data = image_data / 255.
         image_data = image_data[np.newaxis, ...].astype(np.float32)
-        start_time = time.time()
-
+        
         batch_data = tf.constant(image_data)
-    
-        # custom allowed classes (uncomment line below to customize tracker for only people)
-        # allowed_classes_person = ['person']
-        # allowed_classes_marker = ['0', '10', '20', '30', '40']
-
-
-        detections_marker = predict_object.detection(infer_marker, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_marker)
-
-        """
-        데모 코드에서 타겟 마커 설정
-        frame_num 값에 따라 recognition_object 변경하도록 하기 => fps 변수로 두고 일정한 시간 간격으로 변경하도록 하기
         
-        """
-        target_marker = '0' # 타깃 마커 번호 '0' 으로 임시 설정 => 데모 코드에서 설정해주도록 해야 함
+        # # 약 10분 마다 타겟 마커 클래스 변화
+        # now_time = int(time.time() - start_time)
+        # if now_time % 600 == 0:
+        #     target.set_target(str((now_time // 600 + 1) % 5) + "0")
+            
+        # target marker 가 변한 경우
+        if target.changed:
+            # 마커 검출
+            detections_marker = predict_object.detection(infer_marker, batch_data, dc.frame, encoder, FLAGS.cfg_yolo_classes_marker)
+            # 검출된 마커가 없는 경우, 다음 프레임 확인
+            if len(detections_marker) == 0:
+                print("There is no markers to detect.")
+                continue
+            
+            target.find_target_marker_bboxes(detections_marker)
+            
+            # 타겟 마커가 없는 경우, 다음 프레임 확인
+            if len(target.marker_bboxes) == 0:
+                print("There is no target markers.")
+                continue
+            
+############################################################################
 
-        """
-        detection 한 것 marker에서 person 특정
-        
-        """
-
-        # target_marker 값 변하면 해당 bbox 찾기
-        target_marker_bbox_list = find_target_marker_bbox(detections_marker, target_marker) 
-        
+        # target marker를 가진 사람 detection 후 tracking
+        # person detection
         detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_person)
         
-        """
-        target marker를 가진 사람 detection 후 tracking
-        """
-        track_person(tracker_person, detections_person, target_marker_bbox_list) # 사람 따라가기
-        print("main target_id ", target_id)
+        # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
+        # 아니라면, 기존의 track.id를 가진 사람 tracking
+        track_person(tracker_person, detections_person, target) # 사람 따라가기
         
         # 주행 알고리즘(drive)를 거치고 나온 속도/방향을 로봇에 전달
         x,y,z,th,speed,turn = key_move(key,x,y,z,th,speed,turn)
 
         print('key: ', key)
-        print('key_type: ', type(key))
         print('x: {}, y: {}, th: {}, speed: {}, turn: {}'.format(x,y,th,speed,turn))
         
         # 화면 중심 표시
@@ -331,14 +332,11 @@ def main(_argv):
         cv2.rectangle(frame, (445, 445), (435, 435), (255, 0, 0), 5)
 
         # calculate frames per second of running detections
-        fps = 1.0 / (time.time() - start_time)
+        fps = 1.0 / (time.time() - frame_start_time)
         print("FPS: %.2f" % fps)
-        # info = "time: %.2f ms" %(1000*(time.time() - start_time))
-        #print(info)
+        
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        # depth map을 칼라로 보기위함 
-        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_frame, alpha=0.03), cv2.COLORMAP_JET)
 
         if not FLAGS.dont_show:
             cv2.imshow("Output Video", result)
