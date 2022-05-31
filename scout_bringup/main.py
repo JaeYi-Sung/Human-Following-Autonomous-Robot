@@ -67,7 +67,14 @@ def main(_argv):
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
     start_time = time.time()
-
+    
+    # window에 포커스되어야 waitKey 적용됨
+    WindowName = "Output Video"
+    view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
+    # These two lines will force the window to be on top with focus.
+    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_NORMAL)
+    
     # y 증가: 아래 x 증가: 오른쪽
     # draw bbox on screen
     def draw_bbox(bbox, frame, class_name, *track_id):
@@ -85,7 +92,7 @@ def main(_argv):
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name))*17, int(bbox[1])), color, -1)
             cv2.putText(frame, class_name,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
 
-    
+
     # draw bbox for all detections and find target marker's bbox
     def find_target_marker_bboxes(detections, target):
         marker_bbox_list = []
@@ -101,11 +108,11 @@ def main(_argv):
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name)
         
-        target.marker_bboxes = marker_bbox_list
+        return marker_bbox_list
 
-    # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
-    # 아니라면, 기존의 track.id를 가진 사람 tracking
-    def track_person(tracker, detections, target):
+    # target marker가 변한 경우, track_id 설정 후 그 사람 tracking
+    # 아니라면, 기존의 track_id를 가진 사람 tracking
+    def track_person(tracker, detections, target, target_marker_bboxes):
         nonlocal x, y, z, th, speed, turn, frame_num, key # go
 
         # Call the tracker
@@ -116,7 +123,7 @@ def main(_argv):
         go.update(x, y, z, th, speed, turn)
         
         # tracker.lost가 True라면 Target lost
-        if tracker.lost :
+        if tracker.lost:
             go.sendMsg(frame_num % 2)
         else :
             go.sendMsg(1)
@@ -124,8 +131,12 @@ def main(_argv):
         # 추적 알고리즘
         if tracker.lost: # 추적할 객체가 없다면 정지
             key = 'stop'
+            target.lost_track_id = True
+
             print('There are no objects to track.')
             return
+        
+        lost = True
         
         # 추적할 객체가 있다면 동작
         for track in tracker.tracks:
@@ -136,18 +147,18 @@ def main(_argv):
             class_name = track.get_class()
             
             # target marker가 변한 경우, target id를 변경 (find the person who has a targeted marker)
-            if target.changed:
-                for marker_bbox in target.marker_bboxes:
+            if target.changed or target.lost_track_id:
+                for marker_bbox in target_marker_bboxes:
                     if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
-                        target.set_id(track.track_id)
-                        print("target id: ", target.get_id())
+                        target.set_track_id(track.track_id)
+                        print("target id: ", target.track_id)
                         break
                     
             # target id에 해당하지 않은 사람 객체 무시
-            if track.track_id != target.get_id(): continue
+            if track.track_id != target.track_id(): continue
             
+            lost = False
             # target id에 해당하는 사람 객체 tracking
-            
             # cx, cy 계산 추가
             w, h = int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1])
             cx, cy = int(w/2 + bbox[0]), int(h/2 + bbox[1])
@@ -170,7 +181,8 @@ def main(_argv):
             
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name, track.track_id)
-            break
+        
+        if lost: target.lost_track_id = True
 
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -229,12 +241,11 @@ def main(_argv):
 
     # ROS class init
     go = scout_pub_basic()
-    
     rate = rospy.Rate(60)
     
     # 타겟 설정을 위한 객체
     target = Target("0")
-    
+
     # while video is running
     while not rospy.is_shutdown():
 
@@ -253,7 +264,7 @@ def main(_argv):
         right_limit = frame.shape[1]//2 + 70
         
         # 프레임 넘버 1 증가
-        frame_num +=1
+        frame_num += 1
         print('Frame #: ', frame_num)
         
         # 장애물 회피를 위한 ROI 디폴트 세팅하기 (현재는 10프레임만) 추가
@@ -271,36 +282,19 @@ def main(_argv):
         
         batch_data = tf.constant(image_data)
         
-        # # 약 10분 마다 타겟 마커 클래스 변화
-        # now_time = int(time.time() - start_time)
-        # if now_time % 600 == 0:
-        #     target.set_target(str((now_time // 600 + 1) % 5) + "0")
-            
+        target_marker_bboxes = []
+        
         # target marker 가 변한 경우
-        if target.changed:
-            # 마커 검출
-            detections_marker = predict_object.detection(infer_marker, batch_data, dc.frame, encoder, FLAGS.cfg_yolo_classes_marker)
-            # 검출된 마커가 없는 경우, 다음 프레임 확인
-            if len(detections_marker) == 0:
-                print("There is no markers to detect.")
-                continue
-            
-            target.find_target_marker_bboxes(detections_marker)
-            
-            # 타겟 마커가 없는 경우, 다음 프레임 확인
-            if len(target.marker_bboxes) == 0:
-                print("There is no target markers.")
-                continue
-            
-############################################################################
+        if target.changed or target.lost_track_id:
+            detections_marker = predict_object.detection(infer_marker, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_marker)
+            target_marker_bboxes = find_target_marker_bboxes(detections_marker, target)
 
         # target marker를 가진 사람 detection 후 tracking
-        # person detection
         detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_person)
         
-        # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
-        # 아니라면, 기존의 track.id를 가진 사람 tracking
-        track_person(tracker_person, detections_person, target) # 사람 따라가기
+        # target marker가 변한 경우, track_id 설정 후 그 사람 tracking
+        # 아니라면, 기존의 track_id를 가진 사람 tracking
+        track_person(tracker_person, detections_person, target, target_marker_bboxes) # 사람 따라가기
         
         # 주행 알고리즘(drive)를 거치고 나온 속도/방향을 로봇에 전달
         x,y,z,th,speed,turn = key_move(key,x,y,z,th,speed,turn)
@@ -339,12 +333,22 @@ def main(_argv):
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         if not FLAGS.dont_show:
-            cv2.imshow("Output Video", result)
+            cv2.imshow(WindowName, result)
+            
+        keyboard = cv2.waitKey(1) & 0xFF
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
+        if 48 <= keyboard <= 52:
+            target_marker = str((keyboard - 48) * 10)
+            print(f"key \"{chr(keyboard)}\" 입력 ---> 마커 \"{target_marker}\" 선택")
+            target.set_target(target_marker)
+        
+        # ESC 또는 q 입력으로 프로그램 종료
+        if keyboard == 27 or keyboard == 113:
             dc.release()
             cv2.destroyAllWindows()
-            break                        
+            print(f"key 'ESC or q' 입력 ---> 끝내기")
+            break                 
 
 if __name__ == '__main__':
     try:
