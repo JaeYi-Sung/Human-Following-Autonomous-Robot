@@ -1,17 +1,22 @@
 # RealTime-Object-Detection
 
 ### Development Environment
-- Ubuntu Linux v18.04 - JetPack 4.3
-- CUDA 10.2
-- cuDNN 7.6.5
-- nvidia driver 470
-- ROS Melodic
-- OpenCV 4.2
-- Tensorflow 2.3.1
-- Jupyter Lab
+- 딥러닝 모델 학습 서버 환경
+  - Ubuntu v18.04
+  - CUDA 10.2
+  - cuDNN 7.6.5
+  - nvidia driver 470
+  - OpenCV 4.2
+  - Tensorflow 2.3.1
+  - Jupyter Lab, VSCode 
+- 로봇
+  - NVIDIA Jetson TX2
+  - JetPack 4.3
+  - ROS Melodic
+  - CUDA 10.1
+  - cuDNN
 
-
-### Techs that we're going to use
+### Techs
 <p align="center">
   <img src="https://img.shields.io/badge/Pytorch-EE4C2C?style=flat-square&logo=Pytorch&logoColor=white"/></a> &nbsp     
   <img src="https://img.shields.io/badge/Tensorflow-FF6F00?style=flat-square&logo=Tensorflow&logoColor=white"/></a> &nbsp     
@@ -22,27 +27,18 @@
 </p>
 
 ### Process
-- [x] 개발환경 구축
-- [x] 알고리즘 자료 조사
-- [x] ArUco markers 데이터셋 만들기
-  - [x] 이미지 촬영하기
-  - [x] 이미지 라벨링
-- [x] weights 만들기
-  - [x] ArUco markers Dataset YOLOv5 모델 학습
-  - [x] Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv5 모델 학습 (COCO 2017 Dataset 사용)
-  - [x] 성능 향상 공부
-- [x] 계획 수정
-  - YOLOv5 에서 YOLOv4로 변경
-  - Person Dataset 변경
-  - ArUco markers Dataset YOLO 학습 대신, OpenCV의 aruco 모듈 적용
-- [x] OpenCV의 aruco 모듈 적용
-- [x] 계획 수정: OpenCV의 aruco 모듈 대신, Person Dataset과 ArUco markers Dataset 합쳐서 YOLOv4 모델 학습
-- [x] weights 만들기
-  - [x] Yolov4 개발 환경 구축
-  - [x] Person Dataset 만들기 (MobilityAids 사용)
-  - [x] Person Dataset YOLOv4 모델 학습
-  - [x] Person Dataset과 ArUco marker Dataset YOLOv4 모델 학습
-  - [x] ArUco marker Dataset YOLOv4 모델 학습
-- [x] ArUco marker Dataset & Person Dataset 시나리오에 맞게 수정
-- [x] Deepsort Algorithm으로 Tracking, Detecting, Bounding Box 구현
-- [x] 특정 ArUco marker를 지닌 사용자 스위칭 기능
+- 딥러닝 학습 서버 노트북과 구동할 로봇의 개발환경 구축
+- 알고리즘 자료 조사
+- 사람과 마커를 Detection하는 YOLO 모델 만들기
+  1. 처음 계획: Person Dataset(COCO 2017) + ArUco markers Dataset(custom)로 YOLOv5 모델 학습
+  2. 계획 수정
+      - pre-trained weight를 YOLOv5 에서 YOLOv4로 변경
+      - Person Dataset을 COCO 데이터셋 대신 MobilityAids 데이터셋 사용
+      - ArUco markers Detection하기 위해, YOLO 모델 대신 OpenCV의 aruco 모듈 사용
+  3. 계획 수정: OpenCV의 aruco 모듈 대신, Person Dataset(MobilityAids) + ArUco markers Dataset(custom)로 YOLOv4 모델 학습
+  4. 계획 수정: inference 환경에 적합하게 Person Dataset 직접 만들어 YOLOv4 모델 학습
+  5. 계획 수정: 로봇 플랫폼에서 추론 시 FPS 향상을 위한, 모델 경량화와 최적화 ➡️ YOLOv4 tiny 사용, TensorRT 적용
+- DeepSort Algorithm으로 특정 마커를 가진 사람 Tracking 코드 구현
+  - Detection 및 Bounding Box 구현
+  - Deepsort Algorithm으로 타깃 마커를 가진 사람에게 Track id 부여 후 Tracking
+  - 타깃 마커 스위칭 기능 구현
