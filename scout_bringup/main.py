@@ -67,7 +67,14 @@ def main(_argv):
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
     start_time = time.time()
-
+    
+    # window에 포커스되어야 waitKey 적용됨
+    WindowName = "Output Video"
+    view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
+    # These two lines will force the window to be on top with focus.
+    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_NORMAL)
+    
     # y 증가: 아래 x 증가: 오른쪽
     # draw bbox on screen
     def draw_bbox(bbox, frame, class_name, *track_id):
@@ -175,8 +182,7 @@ def main(_argv):
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name, track.track_id)
         
-        if lost:
-            target.lost_track_id = True
+        if lost: target.lost_track_id = True
 
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -327,12 +333,22 @@ def main(_argv):
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         if not FLAGS.dont_show:
-            cv2.imshow("Output Video", result)
+            cv2.imshow(WindowName, result)
+            
+        keyboard = cv2.waitKey(1) & 0xFF
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
+        if 48 <= keyboard <= 52:
+            target_marker = str((keyboard - 48) * 10)
+            print(f"key \"{chr(keyboard)}\" 입력 ---> 마커 \"{target_marker}\" 선택")
+            target.set_target(target_marker)
+        
+        # ESC 또는 q 입력으로 프로그램 종료
+        if keyboard == 27 or keyboard == 113:
             dc.release()
             cv2.destroyAllWindows()
-            break                        
+            print(f"key 'ESC or q' 입력 ---> 끝내기")
+            break                 
 
 if __name__ == '__main__':
     try:
