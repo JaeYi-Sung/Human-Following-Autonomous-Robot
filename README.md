@@ -16,7 +16,7 @@
   - CUDA 10.1
   - cuDNN
 
-### Technologies
+### Technology
 <p align="center">
   <img src="https://img.shields.io/badge/Pytorch-EE4C2C?style=flat-square&logo=Pytorch&logoColor=white"/></a> &nbsp     
   <img src="https://img.shields.io/badge/Tensorflow-FF6F00?style=flat-square&logo=Tensorflow&logoColor=white"/></a> &nbsp     
