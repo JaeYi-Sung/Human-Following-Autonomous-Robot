@@ -18,6 +18,9 @@ from drive import *
 from utils2 import *
 from Default_dist import *
 
+# math
+import math
+
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
@@ -52,6 +55,8 @@ flags.DEFINE_string('weights_person', os.getenv('HOME') + '/wego_ws/src/scout_ro
                     'path to weights file')
 flags.DEFINE_string('weights_marker', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-marker',
                     'path to weights file')
+flags.DEFINE_string('weights_interaction', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-interaction',
+                    'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_boolean('tiny', True, 'yolo or yolo-tiny')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
@@ -59,15 +64,16 @@ flags.DEFINE_string('output', None, 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
-flags.DEFINE_string('cfg_yolo_classes_person', './scout_bringup/data/classes/person.names', 'path to cfg yolo classes file (person.names or marker.names)')
-flags.DEFINE_string('cfg_yolo_classes_marker', './scout_bringup/data/classes/marker.names', 'path to cfg yolo classes file (person.names or marker.names)')
+flags.DEFINE_string('cfg_yolo_classes_person', './scout_bringup/data/classes/person.names', 'path to cfg yolo classes file (person.names or marker.names or interaction.names)')
+flags.DEFINE_string('cfg_yolo_classes_marker', './scout_bringup/data/classes/marker.names', 'path to cfg yolo classes file (person.names or marker.names or interaction.names)')
+flags.DEFINE_string('cfg_yolo_classes_interaction', './scout_bringup/data/classes/interaction.names', 'path to cfg yolo classes file (person.names or marker.names or interaction.names)')
 
 def main(_argv):
     
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
     start_time = time.time()
-    
+
     # window에 포커스되어야 waitKey 적용됨
     WindowName = "Output Video"
     view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
@@ -110,8 +116,8 @@ def main(_argv):
         
         return marker_bbox_list
 
-    # target marker가 변한 경우, track_id 설정 후 그 사람 tracking
-    # 아니라면, 기존의 track_id를 가진 사람 tracking
+    # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
+    # 아니라면, 기존의 track.id를 가진 사람 tracking
     def track_person(tracker, detections, target, target_marker_bboxes):
         nonlocal x, y, z, th, speed, turn, frame_num, key # go
 
@@ -155,7 +161,7 @@ def main(_argv):
                         break
                     
             # target id에 해당하지 않은 사람 객체 무시
-            if track.track_id != target.track_id(): continue
+            if track.track_id != target.track_id: continue
             
             lost = False
             # target id에 해당하는 사람 객체 tracking
@@ -168,10 +174,6 @@ def main(_argv):
                 person_distance = person_dist(depth_frame, cx, cy, h)
                 print('person distance : ', person_dist(depth_frame, cx, cy, h))
 
-            # 직진 안전 구간 최대/최소값
-            stable_max_dist = 2500
-            stable_min_dist = 2000
-            
             if person_distance < stable_min_dist: # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
                 print('Too Close')
                 key = 'stop'
@@ -182,7 +184,9 @@ def main(_argv):
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name, track.track_id)
         
-        if lost: target.lost_track_id = True
+        if lost:
+            target.lost_track_id = True
+
 
     # Definition of the parameters
     max_cosine_distance = 0.4
@@ -210,6 +214,9 @@ def main(_argv):
     saved_model_loaded_marker = tf.saved_model.load(FLAGS.weights_marker, tags=[tag_constants.SERVING])
     infer_marker = saved_model_loaded_marker.signatures['serving_default']
 
+    saved_model_loaded_interaction = tf.saved_model.load(FLAGS.weights_interaction, tags=[tag_constants.SERVING])
+    infer_interaction = saved_model_loaded_interaction.signatures['serving_default']
+
     
     # 로봇 모터 제어를 위한 초깃값 설정
     x = 0
@@ -232,6 +239,12 @@ def main(_argv):
     cx, cy, h = 0, 0, 0
     frame_num = 0
     key =''
+
+    # 직진 안전 구간 최대/최소값
+    stable_max_dist = 2500
+    stable_min_dist = 2000
+    closer_dist = 1000
+
     # Depth camera class 불러오기
     if not use_webcam:
         dc = DepthCamera()
@@ -245,6 +258,12 @@ def main(_argv):
     
     # 타겟 설정을 위한 객체
     target = Target("0")
+
+    # interaction 동작 인식을 위한 파라미터
+    gs_time = 0
+    limit_time = 3
+    interaction_stop = False
+    interaction_closer = False
 
     # while video is running
     while not rospy.is_shutdown():
@@ -264,7 +283,7 @@ def main(_argv):
         right_limit = frame.shape[1]//2 + 70
         
         # 프레임 넘버 1 증가
-        frame_num += 1
+        frame_num +=1
         print('Frame #: ', frame_num)
         
         # 장애물 회피를 위한 ROI 디폴트 세팅하기 (현재는 10프레임만) 추가
@@ -290,11 +309,58 @@ def main(_argv):
             target_marker_bboxes = find_target_marker_bboxes(detections_marker, target)
 
         # target marker를 가진 사람 detection 후 tracking
+        # person detection
         detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_person)
         
-        # target marker가 변한 경우, track_id 설정 후 그 사람 tracking
-        # 아니라면, 기존의 track_id를 가진 사람 tracking
+        # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
+        # 아니라면, 기존의 track.id를 가진 사람 tracking
         track_person(tracker_person, detections_person, target, target_marker_bboxes) # 사람 따라가기
+
+        # Interaction
+        detections_interaction = predict_object.detection(infer_interaction, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_interaction)
+
+        for detection in detections_interaction:
+            while (gs_time <= limit_time):
+                gs_bbox = detection.to_tlbr()
+                gs_class_name = detection.get_class()
+
+                # draw interaction bbox on screen
+                # draw_bbox(gs_bbox, frame, gs_class_name)
+
+                # 사람 bbox와 손bbox 사이의 거리
+                person_cx, person_cy = cx, cy
+                gs_w, gs_h = int(gs_bbox[2] - gs_bbox[0]), int(gs_bbox[3] - gs_bbox[1])
+                gs_cx, gs_cy = int(gs_w/2 + gs_bbox[0]), int(gs_h/2 + gs_bbox[1])
+                person_gs_dist = math.sqrt(math.pow(person_cx - gs_cx, 2) + math.pow(person_cy - gs_cy, 2))
+                print("person_gs_dist :", person_gs_dist)
+
+                if (400 <= person_gs_dist) and (person_gs_dist <= 800):
+                    if(gs_time == 0):
+                        start_time = time.time()
+                        print("start time :", start_time)
+                        pre_person_dist = person_gs_dist
+                    now_time = time.time()
+                    if(abs(pre_person_dist - person_gs_dist) <= 100) :
+                        gs_time = now_time - start_time
+                        print("gs time : ", gs_time)
+
+                else :
+                    break                
+
+                if (gs_time > limit_time):
+                    if (gs_class_name == 'stop'):
+                        interaction_stop = True
+                        key = 'stop'
+                    elif (gs_class_name == 'closer'):
+                        interaction_closer = True
+
+                person_distance = person_dist(depth_frame, cx, cy, h)
+
+                if (person_distance > closer_dist) and (interaction_closer): 
+                    key = 'go'
+                    print('closer')
+
+        gs_time = 0
         
         # 주행 알고리즘(drive)를 거치고 나온 속도/방향을 로봇에 전달
         x,y,z,th,speed,turn = key_move(key,x,y,z,th,speed,turn)
@@ -334,7 +400,13 @@ def main(_argv):
 
         if not FLAGS.dont_show:
             cv2.imshow(WindowName, result)
-            
+            # cv2.imshow("Output Video", result)
+
+
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     dc.release()
+        #     cv2.destroyAllWindows()
+        #     break              
         keyboard = cv2.waitKey(1) & 0xFF
 
         #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
@@ -348,7 +420,7 @@ def main(_argv):
             dc.release()
             cv2.destroyAllWindows()
             print(f"key 'ESC or q' 입력 ---> 끝내기")
-            break                 
+            break
 
 if __name__ == '__main__':
     try:
