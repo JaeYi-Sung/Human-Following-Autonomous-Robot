@@ -26,6 +26,7 @@
   <img src="https://img.shields.io/badge/ROS-22314E?style=flat-square&logo=ROS&logoColor=white"/></a> &nbsp 
 </p>
 
+
 ### Process
 - 딥러닝 학습 서버 노트북과 구동할 로봇의 개발환경 구축
 - 알고리즘 자료 조사
