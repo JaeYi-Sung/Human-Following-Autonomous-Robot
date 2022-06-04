@@ -72,14 +72,15 @@ def main(_argv):
     
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
-    start_time = time.time()
+    #start_time = time.time()
 
     # window에 포커스되어야 waitKey 적용됨
     WindowName = "Output Video"
-    view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
+    view_window = cv2.namedWindow(WindowName)
+    # view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
     # These two lines will force the window to be on top with focus.
-    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
-    cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_NORMAL)
+    # cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+    # cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_NORMAL)
     
     # y 증가: 아래 x 증가: 오른쪽
     # draw bbox on screen
@@ -91,13 +92,13 @@ def main(_argv):
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track_id)))*17, int(bbox[1])), color, -1)
             cv2.putText(frame, class_name + "-" + str(track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-        else: # track_id 가 없으면
-            color = colors[int(class_name) % len(colors)] # 클래스 이름
+        else: # track_id 가 없으면, 클래스 이름
+            tmp = int(class_name) if class_name.isdigit() else (len(class_name) + 10)
+            color = colors[tmp % len(colors)]
             color = [i * 255 for i in color]
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name))*17, int(bbox[1])), color, -1)
             cv2.putText(frame, class_name,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
-
 
     # draw bbox for all detections and find target marker's bbox
     def find_target_marker_bboxes(detections, target):
