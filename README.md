@@ -1,4 +1,5 @@
 # RealTime-Object-Detection
+손동작 인식 기반 자율주행 로봇 개발
 
 ### Development Environment
 - 딥러닝 모델 학습 서버 환경
