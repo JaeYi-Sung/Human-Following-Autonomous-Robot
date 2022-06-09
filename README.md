@@ -5,16 +5,19 @@
   - Ubuntu v18.04
   - CUDA 10.2
   - cuDNN 7.6.5
-  - nvidia driver 470
+  - NVIDIA Driver 470
   - OpenCV 4.2
   - Tensorflow 2.3.1
+  - Python 3.8
   - Jupyter Lab, VSCode 
 - 로봇
   - NVIDIA Jetson TX2
   - JetPack 4.3
   - ROS Melodic
-  - CUDA 10.1
-  - cuDNN
+  - CUDA 10.2
+  - cuDNN 8.0.0
+  - Tensorflow 2.3.1
+  - Python 3.6.9
 
 ### Technology
 <p align="center">
