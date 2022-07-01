@@ -23,6 +23,7 @@
 
 
 ### Process
+#### 사용자 특정 및 전환하는 Human Following Robot
 - 딥러닝 학습 서버 노트북과 구동할 로봇의 개발환경 구축
 - 알고리즘 자료 조사
 - 사람과 마커를 Detection하는 YOLO 모델 만들기
@@ -38,3 +39,4 @@
   - Detection 및 Bounding Box 구현
   - Deepsort Algorithm으로 타깃 마커를 가진 사람에게 Track id 부여 후 Tracking
   - 타깃 마커 스위칭 기능 구현
+#### 자연스러운 손동작으로 로봇 제어
