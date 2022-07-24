@@ -41,17 +41,22 @@ from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from target import Target
 import predict_object
+import interaction
 
 flags.DEFINE_string('weights_person', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-person',
                     'path to weights file')
 flags.DEFINE_string('weights_marker', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-marker',
                     'path to weights file')
-flags.DEFINE_string('weights_interaction', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-interaction',
-                    'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
 
+TIME = 1 # 손동작 1초간 유지시 의미 있는 동작으로 인식
+REST = 3 # 손동작 인식 후 3초간 인식하지 않기
 idx_to_name_marker = {0: "0", 1: "10", 2: "20", 3: "30", 4: "40"}
 idx_to_name_person = {0: "person"}
+
+mode = 0 # 주행 상태 (0: 주행 상태, 1: 정지 상태)
+fist_time, pointing_time, inactive_time = 0, 0, 0 # fist 인식 시작 시간, pointing 인식 시작 시간, 휴면 인식 시작 시간
+
 def main(_argv):
     cmap = plt.get_cmap('tab20b')
     colors = [cmap(i)[:3] for i in np.linspace(0, 1, 6)]
@@ -68,10 +73,10 @@ def main(_argv):
         else: # track_id 가 없으면
             color = marker_colors[int(class_name) // 10]
             text = class_name
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+        cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(text))*17, int(bbox[1])), color, -1)
         cv2.putText(frame, text,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
-
+        
     # draw bbox for all detections and find target marker's bbox
     def find_target_marker_bboxes(detections, target):
         marker_bbox_list = []
@@ -91,8 +96,8 @@ def main(_argv):
 
     # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
     # 아니라면, 기존의 track.id를 가진 사람 tracking
-    def track_person(tracker, detections, target, target_marker_bboxes, interaction_closer, closer_dist):
-        nonlocal x, y, z, th, speed, turn, frame_num, key, cx, cy, final_closer # go
+    def track_person(tracker, detections, target, target_marker_bboxes):
+        nonlocal x, y, z, th, speed, turn, frame_num, key # go
 
         # Call the tracker
         tracker.predict()
@@ -116,7 +121,7 @@ def main(_argv):
             return
         
         lost = True
-
+        
         # 추적할 객체가 있다면 동작
         for track in tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
@@ -132,88 +137,80 @@ def main(_argv):
                         target.set_track_id(track.track_id)
                         print("target id: ", target.track_id)
                         break
-                    
+            
             # target id에 해당하지 않은 사람 객체 무시
             if track.track_id != target.track_id: continue
             
+            # target id에 해당하는 사람 객체 tracking            
             lost = False
-            # target id에 해당하는 사람 객체 tracking
+            
+            # target person의 bbox 저장
+            target.track_bbox = bbox
+            
             # cx, cy 계산 추가
             w, h = int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1])
             cx, cy = int(w/2 + bbox[0]), int(h/2 + bbox[1])
             
             # 사람과 로봇의 거리: person_distance
-            if not use_webcam:
-                person_distance = person_dist(depth_frame, cx, cy, h)
-                print('person distance : ', person_dist(depth_frame, cx, cy, h))
+            person_distance = person_dist(depth_frame, cx, cy, h)
+            print('person distance : ', person_distance)
 
-            if(final_closer) :
-                print('interaction closer')
-                key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, closer_dist, stable_max_dist, person_distance)
-
-            else : 
-                if person_distance < stable_min_dist: # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
-                    print('Too Close')
-                    key = 'stop'
-                else:
-                    print('key is NOT None')                 
-                    key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance)
+            # 직진 안전 구간 최대/최소값
+            stable_max_dist = 2500
+            stable_min_dist = 2000
+            
+            # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
+            if person_distance < stable_min_dist:
+                print('Too Close')
+                key = 'stop'
+            
+            # 가깝지 않다면, 주행
+            else:
+                print('key is NOT None')                 
+                key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance)
             
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name, track.track_id)
         
         if lost: target.lost_track_id = True
-
-    def is_interaction(detections, interaction_closer, interaction_stop, start_time_c, start_time_s):
-        nonlocal cx, cy
-
-        person_cx, person_cy = cx, cy
-        check_closer = False
-        check_stop = False
-
-        print(detections)
-
-        for detection in detections:
+    
+    def check_meaningful_gesture():
+        now_time = time.time()
+        if now_time - inactive_time >= REST: # 휴면 시간 초과했다면
+            inactive_time = 0 # 초기화
+        else: # 휴면 시간 초과하지 않았고, 다른 동작이 인식되지 않았다면, 제스쳐 인식
+            hand_gesture = interaction.recognize_hand_gesture(target, frame)
             
-            gs_bbox = detection.to_tlbr()
-            class_name = detection.get_class()
-
-            # 사람 bbox와 손bbox 사이의 거리
-            gs_w, gs_h = int(gs_bbox[2] - gs_bbox[0]), int(gs_bbox[3] - gs_bbox[1])
-            gs_cx, gs_cy = int(gs_w/2 + gs_bbox[0]), int(gs_h/2 + gs_bbox[1])
-            person_gs_dist = math.sqrt(math.pow(person_cx - gs_cx, 2) + math.pow(person_cy - gs_cy, 2))
-
-            print("is_interaction FUNCTION: person_gs_dist - ", person_gs_dist)
-
-            if (100 <= person_gs_dist <= 500) :
-                draw_bbox(gs_bbox, frame, class_name)
-                print(f"is_interaction FUNCTION: interaction_\"{class_name}\" TRUE")
-                if (class_name == 'closer'):
-                    check_closer = True
-                    if (interaction_closer == False) :
-                        start_time_c = time.time()
-                        interaction_closer = True
-
-                if (class_name == 'stop'):
-                    check_stop = True
-                    if (interaction_stop == False) :
-                        start_time_s = time.time()
-                        interaction_stop = True
-
-        if(not check_closer) :
-            print(f"is_interaction FUNCTION: interaction_closer FALSE")
-            interaction_closer = False
-            final_closer = False
-            start_time_c = -1
-
-        if(not check_stop) :
-            print(f"is_interaction FUNCTION: interaction_stop FALSE")
-            interaction_stop = False
-            start_time_s = -1
-
-        return interaction_closer, interaction_stop, start_time_c, start_time_s
-
-
+            # fist 인식
+            if hand_gesture == "fist":
+                if fist_time == 0: # 처음 fist 인식했다면
+                    fist_time = now_time # fist 인식 시작 시간 저장
+                else: # 처음 설정이 아니고, 다음 1초 후 프레임에서도 인식
+                    if now_time - fist_time >= TIME: # 의미 있는 제스쳐
+                        mode = 1 - mode # 로봇의 주행 상태 toggle
+                        ##### 주행 조작 코드 #####
+                        fist_time = 0
+                        inactive_time = now_time # 휴면 시작 시간 저장
+                        
+                pointing_time = 0 # pointing 초기화
+            
+            # pointing 인식 ---> 나중에
+            elif hand_gesture == "pointing":
+                if pointing_time == 0:
+                    pointing_time = now_time
+                else:
+                    if now_time - pointing_time >= TIME:
+                        ##### 주행 조작 코드 ##### 
+                        pointing_time = 0
+                        inactive_time = now_time
+                        
+                fist_time = 0 # fist 인식 시작 시간 초기화
+            
+            # 어떤 손동작도 인식하지 못함 (normal) 
+            else:
+                fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
+                ##### 주행 조작 코드 #####
+    
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
@@ -240,9 +237,6 @@ def main(_argv):
     saved_model_loaded_marker = tf.saved_model.load(FLAGS.weights_marker, tags=[tag_constants.SERVING])
     infer_marker = saved_model_loaded_marker.signatures['serving_default']
 
-    saved_model_loaded_interaction = tf.saved_model.load(FLAGS.weights_interaction, tags=[tag_constants.SERVING])
-    infer_interaction = saved_model_loaded_interaction.signatures['serving_default']
-
     
     # 로봇 모터 제어를 위한 초깃값 설정
     x = 0
@@ -265,15 +259,9 @@ def main(_argv):
     cx, cy, h = 0, 0, 0
     frame_num = 0
     key =''
-
-    # 직진 안전 구간 최대/최소값
-    stable_max_dist = 2500
-    stable_min_dist = 2000
-    closer_dist = 1000
-
     # Depth camera class 불러오기
 
-        dc = DepthCamera()
+    dc = DepthCamera()
 
     # 장애물 영역 기본값 받아오기
     default = Default_dist()
@@ -284,14 +272,6 @@ def main(_argv):
     
     # 타겟 설정을 위한 객체
     target = Target("0")
-
-    # interaction 동작 인식을 위한 파라미터
-    start_time_c = -1
-    start_time_s = -1
-    limit_time = 2
-    interaction_stop = False
-    interaction_closer = False
-    final_closer = False
 
     # while video is running
     while not rospy.is_shutdown():
@@ -306,7 +286,7 @@ def main(_argv):
             print('Video has ended or failed, try a different video format!')
             break
         
-                # 좌/우 회전 한곗값 설정
+        # 좌/우 회전 한곗값 설정
         left_limit = frame.shape[1]//2 - 70
         right_limit = frame.shape[1]//2 + 70
         
@@ -338,41 +318,14 @@ def main(_argv):
 
         # target marker를 가진 사람 detection 후 tracking
         detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, idx_to_name_person)
-        
+
         # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
         # 아니라면, 기존의 track.id를 가진 사람 tracking
-        track_person(tracker_person, detections_person, target, target_marker_bboxes, final_closer, closer_dist) # 사람 따라가기
-
-        # Interaction
-        detections_interaction = predict_object.detection(infer_interaction, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_interaction)
+        track_person(tracker_person, detections_person, target, target_marker_bboxes) # 사람 따라가기
         
-
-        interaction_closer, interaction_stop, start_time_c, start_time_s = is_interaction(detections_interaction, interaction_closer, interaction_stop, start_time_c, start_time_s)
-
-        if(start_time_c != -1) :
-            now_time = time.time()
-            gs_time = now_time - start_time_c
-            print(gs_time)
-
-            if (gs_time > limit_time) :
-                if(interaction_closer) :
-                    print(f"MAIN FUNCTION: final_closer TRUE")
-                    final_closer = True
-                    #interaction_closer = False
+        if not target.lost_track_id:
+            check_meaningful_gesture()
         
-        elif(start_time_s != -1) :
-            now_time = time.time()
-            gs_time = now_time - start_time_s
-            print(gs_time)
-
-            if (gs_time > limit_time) :
-                if(interaction_stop) :
-                    print(f"MAIN FUNCTION: key STOP")
-                    #interaction_stop = False
-                    key = 'stop'
-                # start_time = -1
-
-
         # 주행 알고리즘(drive)를 거치고 나온 속도/방향을 로봇에 전달
         x,y,z,th,speed,turn = key_move(key,x,y,z,th,speed,turn)
 
@@ -404,7 +357,7 @@ def main(_argv):
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         cv2.imshow("Output Video", result)
-         
+                    
         keyboard = cv2.waitKey(1) & 0xFF
         
         # ESC 또는 q 입력으로 프로그램 종료
@@ -413,7 +366,7 @@ def main(_argv):
             cv2.destroyAllWindows()
             print(f"key 'ESC or q' 입력 ---> 끝내기")
             break
-
+        
         #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
         elif 48 <= keyboard <= 52:
             target_marker = str((keyboard - 48) * 10)
