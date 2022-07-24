@@ -135,8 +135,9 @@ def main(_argv):
                 for marker_bbox in target_marker_bboxes:
                     if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
                         target.set_track_id(track.track_id)
-                        print("target id: ", target.track_id)
-                        break
+                        # print("target id: ", target.track_id)
+            
+            if target.changed: continue # target marker 바뀌고 다시 track id 설정 안된 경우, track 하지 않기
             
             # target id에 해당하지 않은 사람 객체 무시
             if track.track_id != target.track_id: continue
