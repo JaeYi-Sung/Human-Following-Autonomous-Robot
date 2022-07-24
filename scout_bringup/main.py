@@ -18,9 +18,6 @@ from drive import *
 from utils2 import *
 from Default_dist import *
 
-# math
-import math
-
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
@@ -28,10 +25,9 @@ import tensorflow as tf
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
-from absl import app, flags, logging
+from absl import app, flags
 from absl.flags import FLAGS
 import core.utils as utils
-from core.yolov4 import filter_boxes
 from tensorflow.python.saved_model import tag_constants
 from core.config import cfg
 from PIL import Image
@@ -39,18 +35,13 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
 # deep sort imports
-from deep_sort import preprocessing, nn_matching
+from deep_sort import nn_matching
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from target import Target
 import predict_object
 
-# 웹캠을 사용하려면 True, D435를 사용하려면 False
-use_webcam = False
-
-flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights_person', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-person',
                     'path to weights file')
 flags.DEFINE_string('weights_marker', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-marker',
@@ -58,49 +49,28 @@ flags.DEFINE_string('weights_marker', os.getenv('HOME') + '/wego_ws/src/scout_ro
 flags.DEFINE_string('weights_interaction', os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/checkpoints/yolov4-tiny-416-interaction',
                     'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
-flags.DEFINE_boolean('tiny', True, 'yolo or yolo-tiny')
-flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
-flags.DEFINE_string('output', None, 'path to output video')
-flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
-flags.DEFINE_boolean('dont_show', False, 'dont show video output')
-flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
-flags.DEFINE_string('cfg_yolo_classes_person', './scout_bringup/data/classes/person.names', 'path to cfg yolo classes file (person.names)')
-flags.DEFINE_string('cfg_yolo_classes_marker', './scout_bringup/data/classes/marker.names', 'path to cfg yolo classes file (marker.names)')
-flags.DEFINE_string('cfg_yolo_classes_interaction', './scout_bringup/data/classes/interaction.names', 'path to cfg yolo classes file (interaction.names)')
 
 idx_to_name_marker = {0: "0", 1: "10", 2: "20", 3: "30", 4: "40"}
 idx_to_name_person = {0: "person"}
 def main(_argv):
-    
     cmap = plt.get_cmap('tab20b')
-    colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
-    #start_time = time.time()
-
-    # window에 포커스되어야 waitKey 적용됨
-    WindowName = "Output Video"
-    view_window = cv2.namedWindow(WindowName)
-    # view_window = cv2.namedWindow(WindowName,cv2.WINDOW_NORMAL)
-    # These two lines will force the window to be on top with focus.
-    # cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
-    # cv2.setWindowProperty(WindowName,cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_NORMAL)
+    colors = [cmap(i)[:3] for i in np.linspace(0, 1, 6)]
+    marker_colors = [i * 255 for i in colors[:5]]
+    person_color = [i * 255 for i in colors[5]]
     
     # y 증가: 아래 x 증가: 오른쪽
     # draw bbox on screen
     def draw_bbox(bbox, frame, class_name, *track_id):
         if len(track_id) != 0: # track_id 가 있으면
             track_id = track_id[0]
-            color = colors[int(track_id) % len(colors)]
-            color = [i * 255 for i in color]
+            color = person_color
+            text = class_name + "-" + str(track_id)
+        else: # track_id 가 없으면
+            color = marker_colors[int(class_name) // 10]
+            text = class_name
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track_id)))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name + "-" + str(track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-        else: # track_id 가 없으면, 클래스 이름
-            tmp = int(class_name) if class_name.isdigit() else (len(class_name) + 10)
-            color = colors[tmp % len(colors)]
-            color = [i * 255 for i in color]
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
+        cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(text))*17, int(bbox[1])), color, -1)
+        cv2.putText(frame, text,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
 
     # draw bbox for all detections and find target marker's bbox
     def find_target_marker_bboxes(detections, target):
@@ -302,7 +272,7 @@ def main(_argv):
     closer_dist = 1000
 
     # Depth camera class 불러오기
-    if not use_webcam:
+
         dc = DepthCamera()
 
     # 장애물 영역 기본값 받아오기
@@ -419,11 +389,6 @@ def main(_argv):
         # ROS Rate sleep
         rate.sleep()
 
-        '''
-        box_center_roi = np.array((depth_frame[cy-10:cy+10, cx-10:cx+10]),dtype=np.float64)
-        cv2.rectangle(frame, (cx-10, cy+10), (cx+10, cy-10), (255, 255, 255), 2)
-        '''
-
         safe_roi = np.array([[400, 400], [240, 400], [160, 480], [480, 480]])
         #safe_roi = np.array([[240, 420], [400, 420], [480, 160], [480, 480]])
         cv2.polylines(frame, [safe_roi], True, (255, 255, 255), 2)
@@ -438,17 +403,9 @@ def main(_argv):
         
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        if not FLAGS.dont_show:
-            cv2.imshow(WindowName, result)
+        cv2.imshow("Output Video", result)
          
         keyboard = cv2.waitKey(1) & 0xFF
-
-        #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
-        if 48 <= keyboard <= 52:
-            target_marker = str((keyboard - 48) * 10)
-            print(f"key \"{chr(keyboard)}\" 입력 ---> 마커 \"{target_marker}\" 선택")
-            target.set_target(target_marker)
         
         # ESC 또는 q 입력으로 프로그램 종료
         if keyboard == 27 or keyboard == 113:
@@ -457,6 +414,12 @@ def main(_argv):
             print(f"key 'ESC or q' 입력 ---> 끝내기")
             break
 
+        #  0, 1, 2, 3, 4 입력으로 타겟 마커 변경
+        elif 48 <= keyboard <= 52:
+            target_marker = str((keyboard - 48) * 10)
+            print(f"key \"{chr(keyboard)}\" 입력 ---> 마커 \"{target_marker}\" 선택")
+            target.set_target(target_marker)
+        
 if __name__ == '__main__':
     try:
         app.run(main)
