@@ -218,11 +218,10 @@ def main(_argv):
             
             # draw bbox on screen
             draw_bbox(bbox, frame, class_name, track_id)
-        if lost: target.lost_track_id = True
         
-            # 어떤 손동작도 인식하지 못함 (normal) 
-            else:
-                fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
+        if lost: 
+            target.lost_track_id = True
+            key = 'stop'
 
     # Definition of the parameters
     max_cosine_distance = 0.4
