@@ -13,7 +13,7 @@ flags.DEFINE_float('iou', 0.45, 'iou threshold')
 flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 
-def detection(infer, batch_data, frame, encoder, allowed_classes):
+def detection(infer, batch_data, frame, encoder, idx_to_name):
     nms_max_overlap = 1.0
 
     pred_bbox = infer(batch_data)
@@ -44,45 +44,11 @@ def detection(infer, batch_data, frame, encoder, allowed_classes):
     original_h, original_w, _ = frame.shape
     bboxes = utils.format_boxes(bboxes, original_h, original_w) 
 
-    # store all predictions in one parameter for simplicity when calling functions
-    pred_bbox = [bboxes, scores, classes, num_objects]
-    
-    #fps = 1.0 / (time.time() - start_time)
-    #print("1-FPS: %.2f" % fps)
-
-    # read in all class names from config
-    class_names = utils.read_class_names(cfg.YOLO.CLASSES)
-
-    # by default allow all classes in .names file
-    #allowed_classes = list(class_names.values())
-    
-    # custom allowed classes (uncomment line below to customize tracker for only people)
-    # allowed_classes = ['person']
-
-    # loop through objects and use class index to get class name, allow only classes in allowed_classes list
-    names = []
-    deleted_indx = []
-    for i in range(num_objects):
-        class_indx = int(classes[i])
-        class_name = class_names[class_indx]
-        if class_name not in allowed_classes:
-            deleted_indx.append(i)
-        else:
-            names.append(class_name)
-    names = np.array(names)
-    count = len(names)
-    if FLAGS.count:
-        cv2.putText(frame, "Objects being tracked: {}".format(count), (5, 35), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 255, 0), 2)
-        print("Objects being tracked: {}".format(count))
-
-    # delete detections that are not in allowed_classes
-    bboxes = np.delete(bboxes, deleted_indx, axis=0)
-    scores = np.delete(scores, deleted_indx, axis=0)
+    names = [idx_to_name[i] for i in classes]
 
     # encode yolo detections and feed to tracker
     features = encoder(frame, bboxes)
     detections = [Detection(bbox, score, class_name, feature) for bbox, score, class_name, feature in zip(bboxes, scores, names, features)]
-
 
     # run non-maxima supression
     boxs = np.array([d.tlwh for d in detections])

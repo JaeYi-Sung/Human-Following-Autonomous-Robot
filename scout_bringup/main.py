@@ -68,6 +68,8 @@ flags.DEFINE_string('cfg_yolo_classes_person', './scout_bringup/data/classes/per
 flags.DEFINE_string('cfg_yolo_classes_marker', './scout_bringup/data/classes/marker.names', 'path to cfg yolo classes file (marker.names)')
 flags.DEFINE_string('cfg_yolo_classes_interaction', './scout_bringup/data/classes/interaction.names', 'path to cfg yolo classes file (interaction.names)')
 
+idx_to_name_marker = {0: "0", 1: "10", 2: "20", 3: "30", 4: "40"}
+idx_to_name_person = {0: "person"}
 def main(_argv):
     
     cmap = plt.get_cmap('tab20b')
@@ -359,14 +361,13 @@ def main(_argv):
         
         target_marker_bboxes = []
         
-        # target marker 가 변한 경우
+        # 다시 track id 설정
         if target.changed or target.lost_track_id:
-            detections_marker = predict_object.detection(infer_marker, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_marker)
+            detections_marker = predict_object.detection(infer_marker, batch_data, frame, encoder, idx_to_name_marker)
             target_marker_bboxes = find_target_marker_bboxes(detections_marker, target)
 
         # target marker를 가진 사람 detection 후 tracking
-        # person detection
-        detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, FLAGS.cfg_yolo_classes_person)
+        detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, idx_to_name_person)
         
         # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
         # 아니라면, 기존의 track.id를 가진 사람 tracking
