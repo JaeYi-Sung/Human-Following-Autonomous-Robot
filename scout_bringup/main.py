@@ -49,50 +49,98 @@ flags.DEFINE_string('weights_marker', os.getenv('HOME') + '/wego_ws/src/scout_ro
                     'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
 
-TIME = 1 # 손동작 1초간 유지시 의미 있는 동작으로 인식
-REST = 3 # 손동작 인식 후 3초간 인식하지 않기
+# bounding box 색깔 지정
+cmap = plt.get_cmap('tab20b')
+colors = [cmap(i)[:3] for i in np.linspace(0, 1, 6)]
+marker_colors = [i * 255 for i in colors[:5]]
+person_color = [i * 255 for i in colors[5]]
+
+# detection indexing
 idx_to_name_marker = {0: "0", 1: "10", 2: "20", 3: "30", 4: "40"}
 idx_to_name_person = {0: "person"}
 
-mode = 0 # 주행 상태 (0: 주행 상태, 1: 정지 상태)
-fist_time, pointing_time, inactive_time = 0, 0, 0 # fist 인식 시작 시간, pointing 인식 시작 시간, 휴면 인식 시작 시간
+# 시간 제한 상수 설정
+TIME = 1 # 손동작 1초간 유지시 의미 있는 동작으로 인식
+REST = 3 # 손동작 인식 후 3초간 인식하지 않기
+CLOSER = 10 # 10초 동안 더 가까운 거리에서 주행
+
+# y 증가: 아래 x 증가: 오른쪽
+# draw bbox on screen
+def draw_bbox(bbox, frame, class_name, *track_id):
+    if len(track_id) != 0: # track_id 가 있으면
+        track_id = track_id[0]
+        color = person_color
+        text = class_name + "-" + str(track_id)
+    else: # track_id 가 없으면
+        color = marker_colors[int(class_name) // 10]
+        text = class_name
+        
+    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+    cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(text))*17, int(bbox[1])), color, -1)
+    cv2.putText(frame, text, (int(bbox[0]), int(bbox[1]-10)), 0, 0.75, (255,255,255), 2)
+    
+# draw bbox for all detections and find target marker's bbox
+def find_target_marker_bboxes(detections, target, frame):
+    marker_bbox_list = []
+
+    for detection in detections:
+        bbox = detection.to_tlbr()
+        class_name = detection.get_class()
+        
+        # find target marker's bbox
+        if class_name == target.marker: 
+            marker_bbox_list.append(bbox)
+
+        # draw bbox on screen
+        draw_bbox(bbox, frame, class_name)
+    
+    return marker_bbox_list
+
+def check_meaningful_gesture(target, frame, mode, closer, fist_time, pointing_time, inactive_time, closer_time):
+    now_time = time.time()
+    if now_time - inactive_time >= REST: # 휴면 시간 초과했다면
+        inactive_time = 0 # 초기화
+    else: # 휴면 시간 초과하지 않았고, 다른 동작이 인식되지 않았다면, 제스쳐 인식
+        hand_gesture = interaction.recognize_hand_gesture(target, frame)
+
+        # fist 인식
+        if hand_gesture == "fist":
+            if fist_time == 0: # 처음 fist 인식했다면
+                fist_time = now_time # fist 인식 시작 시간 저장
+            else: # 처음 설정이 아니고, 다음 1초 후 프레임에서도 인식
+                if now_time - fist_time >= TIME: # 의미 있는 제스쳐
+                    mode = 1 - mode # 로봇의 주행 상태 toggle
+                    ##### 주행 조작 코드 추가 ##### 
+                    fist_time = 0
+                    inactive_time = now_time # 휴면 시작 시간 저장
+                    
+            pointing_time = 0 # pointing 초기화
+        
+        # pointing 인식 ---> 나중에
+        elif hand_gesture == "pointing":
+            if pointing_time == 0:
+                pointing_time = now_time
+            else:
+                if now_time - pointing_time >= TIME:
+                    ##### closer 주행 조작 코드 추가 ##### 
+                    closer = True
+                    pointing_time = 0
+                    closer_time = now_time
+                    inactive_time = now_time
+                    
+            fist_time = 0 # fist 인식 시작 시간 초기화
+        
+        # 어떤 손동작도 인식하지 못함 (normal) 
+        else:
+            fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
+            ##### 주행 조작 코드?? #####
+    return mode, closer, fist_time, pointing_time, inactive_time, closer_time
+
 
 def main(_argv):
-    cmap = plt.get_cmap('tab20b')
-    colors = [cmap(i)[:3] for i in np.linspace(0, 1, 6)]
-    marker_colors = [i * 255 for i in colors[:5]]
-    person_color = [i * 255 for i in colors[5]]
-    
-    # y 증가: 아래 x 증가: 오른쪽
-    # draw bbox on screen
-    def draw_bbox(bbox, frame, class_name, *track_id):
-        if len(track_id) != 0: # track_id 가 있으면
-            track_id = track_id[0]
-            color = person_color
-            text = class_name + "-" + str(track_id)
-        else: # track_id 가 없으면
-            color = marker_colors[int(class_name) // 10]
-            text = class_name
-        cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-        cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(text))*17, int(bbox[1])), color, -1)
-        cv2.putText(frame, text,(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255), 2)
-        
-    # draw bbox for all detections and find target marker's bbox
-    def find_target_marker_bboxes(detections, target):
-        marker_bbox_list = []
-
-        for detection in detections:
-            bbox = detection.to_tlbr()
-            class_name = detection.get_class()
-            
-            # find target marker's bbox
-            if class_name == target.marker: 
-                marker_bbox_list.append(bbox)
-
-            # draw bbox on screen
-            draw_bbox(bbox, frame, class_name)
-        
-        return marker_bbox_list
+    mode = 0 # 주행 상태 (0: 주행 상태, 1: 정지 상태)
+    closer = False
+    fist_time, pointing_time, inactive_time, closer_time = 0, 0, 0, 0 # fist 인식 시작 시간, pointing 인식 시작 시간, 휴면 인식 시작 시간
 
     # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
     # 아니라면, 기존의 track.id를 가진 사람 tracking
@@ -114,9 +162,8 @@ def main(_argv):
 
         # 추적 알고리즘
         if tracker.lost: # 추적할 객체가 없다면 정지
-            key = 'stop'
             target.lost_track_id = True
-
+            key = 'stop'
             print('There are no objects to track.')
             return
         
@@ -129,18 +176,20 @@ def main(_argv):
             
             bbox = track.to_tlbr()
             class_name = track.get_class()
+            track_id = track.track_id
             
             # target marker가 변한 경우, target id를 변경 (find the person who has a targeted marker)
             if target.changed or target.lost_track_id:
                 for marker_bbox in target_marker_bboxes:
                     if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
-                        target.set_track_id(track.track_id)
+                        target.set_track_id(track_id)
                         # print("target id: ", target.track_id)
+                        break
             
             if target.changed: continue # target marker 바뀌고 다시 track id 설정 안된 경우, track 하지 않기
             
             # target id에 해당하지 않은 사람 객체 무시
-            if track.track_id != target.track_id: continue
+            if track_id != target.track_id: continue
             
             # target id에 해당하는 사람 객체 tracking            
             lost = False
@@ -155,63 +204,27 @@ def main(_argv):
             # 사람과 로봇의 거리: person_distance
             person_distance = person_dist(depth_frame, cx, cy, h)
             print('person distance : ', person_distance)
-
-            # 직진 안전 구간 최대/최소값
-            stable_max_dist = 2500
-            stable_min_dist = 2000
             
-            # 로봇과 사람의 거리가 직진 안전 구간 최솟값보다 작을 때 정지
-            if person_distance < stable_min_dist:
-                print('Too Close')
-                key = 'stop'
-            
-            # 가깝지 않다면, 주행
-            else:
-                print('key is NOT None')                 
-                key,speed,turn = drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance)
+            # mode가 1이라면 주행, 0 이라면 비주행
+            if mode:
+                if not closer: # closer 가 False일 때, 평소 거리로 주행
+                    key,speed,turn = drive(cx, frame, turn, speed, person_distance)
+                elif closer_time - time.time() <= CLOSER: # closer가 True일 때, CLOSER 동안 더 가깝게 주행하는 함수 호출
+                    key,speed,turn = drive(cx, frame, turn, speed, 1.1 * person_distance)
+                else: # closer가 True이고, CLOSER 시간 초과 시, 초기화
+                    closer_time = 0
+                    closer = False
+            else: key = 'stop'
             
             # draw bbox on screen
-            draw_bbox(bbox, frame, class_name, track.track_id)
-        
+            draw_bbox(bbox, frame, class_name, track_id)
         if lost: target.lost_track_id = True
-    
-    def check_meaningful_gesture():
-        now_time = time.time()
-        if now_time - inactive_time >= REST: # 휴면 시간 초과했다면
-            inactive_time = 0 # 초기화
-        else: # 휴면 시간 초과하지 않았고, 다른 동작이 인식되지 않았다면, 제스쳐 인식
-            hand_gesture = interaction.recognize_hand_gesture(target, frame)
-            
-            # fist 인식
-            if hand_gesture == "fist":
-                if fist_time == 0: # 처음 fist 인식했다면
-                    fist_time = now_time # fist 인식 시작 시간 저장
-                else: # 처음 설정이 아니고, 다음 1초 후 프레임에서도 인식
-                    if now_time - fist_time >= TIME: # 의미 있는 제스쳐
-                        mode = 1 - mode # 로봇의 주행 상태 toggle
-                        ##### 주행 조작 코드 #####
-                        fist_time = 0
-                        inactive_time = now_time # 휴면 시작 시간 저장
-                        
-                pointing_time = 0 # pointing 초기화
-            
-            # pointing 인식 ---> 나중에
-            elif hand_gesture == "pointing":
-                if pointing_time == 0:
-                    pointing_time = now_time
-                else:
-                    if now_time - pointing_time >= TIME:
-                        ##### 주행 조작 코드 ##### 
-                        pointing_time = 0
-                        inactive_time = now_time
-                        
-                fist_time = 0 # fist 인식 시작 시간 초기화
-            
+        
             # 어떤 손동작도 인식하지 못함 (normal) 
             else:
                 fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
                 ##### 주행 조작 코드 #####
-    
+
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
@@ -231,7 +244,6 @@ def main(_argv):
     config.gpu_options.allow_growth = True
     input_size = FLAGS.size
 
-
     saved_model_loaded_person = tf.saved_model.load(FLAGS.weights_person, tags=[tag_constants.SERVING])
     infer_person = saved_model_loaded_person.signatures['serving_default']
 
@@ -247,17 +259,7 @@ def main(_argv):
     speed = 0.1
     turn = 1
 
-    # 로봇의 최대,최소 속도 설정
-    # <!--선속도--!>
-    max_speed = 0.4
-    min_speed = 0.2
-
-    # <!--각속도--!>
-    max_turn = 0.2
-    min_turn = 0.1
-
     # 변수 추가
-    cx, cy, h = 0, 0, 0
     frame_num = 0
     key =''
     # Depth camera class 불러오기
@@ -287,10 +289,6 @@ def main(_argv):
             print('Video has ended or failed, try a different video format!')
             break
         
-        # 좌/우 회전 한곗값 설정
-        left_limit = frame.shape[1]//2 - 70
-        right_limit = frame.shape[1]//2 + 70
-        
         # 프레임 넘버 1 증가
         frame_num +=1
         print('Frame #: ', frame_num)
@@ -315,7 +313,7 @@ def main(_argv):
         # 다시 track id 설정
         if target.changed or target.lost_track_id:
             detections_marker = predict_object.detection(infer_marker, batch_data, frame, encoder, idx_to_name_marker)
-            target_marker_bboxes = find_target_marker_bboxes(detections_marker, target)
+            target_marker_bboxes = find_target_marker_bboxes(detections_marker, target, frame)
 
         # target marker를 가진 사람 detection 후 tracking
         detections_person = predict_object.detection(infer_person, batch_data, frame, encoder, idx_to_name_person)
@@ -324,8 +322,9 @@ def main(_argv):
         # 아니라면, 기존의 track.id를 가진 사람 tracking
         track_person(tracker_person, detections_person, target, target_marker_bboxes) # 사람 따라가기
         
+        # Interaction
         if not target.lost_track_id:
-            check_meaningful_gesture()
+            mode, closer, fist_time, pointing_time, inactive_time, closer_time = check_meaningful_gesture(target, frame, mode, closer, fist_time, pointing_time, inactive_time, closer_time)
         
         # 주행 알고리즘(drive)를 거치고 나온 속도/방향을 로봇에 전달
         x,y,z,th,speed,turn = key_move(key,x,y,z,th,speed,turn)
@@ -336,15 +335,10 @@ def main(_argv):
         # 화면 중심 표시
         cv2.circle(frame, (320, 240), 10, (255, 255, 255))
 
-        # 좌우 회전 구분선 그리기
-        cv2.line(frame, (left_limit,0), (left_limit,frame.shape[0]), (255,0,0))
-        cv2.line(frame, (right_limit,0), (right_limit,frame.shape[0]), (255,0,0))
-
         # ROS Rate sleep
         rate.sleep()
 
         safe_roi = np.array([[400, 400], [240, 400], [160, 480], [480, 480]])
-        #safe_roi = np.array([[240, 420], [400, 420], [480, 160], [480, 480]])
         cv2.polylines(frame, [safe_roi], True, (255, 255, 255), 2)
         cv2.rectangle(frame, (205, 445), (195, 435), (255, 0, 0), 5)
         cv2.rectangle(frame, (245, 405), (235, 395), (255, 0, 0), 5)

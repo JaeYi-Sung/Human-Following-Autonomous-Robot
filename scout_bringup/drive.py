@@ -1,135 +1,67 @@
-def drive(cx, left_limit, right_limit, turn, speed):
+# 회전 관련 상수
+TURN_LIMIT = 0.1
+GO_TURN_LIMIT = 0.2
+EDGE_TURN = 0.6
+DEFAULT_TURN_SPEED = 0.6
+DEFAULT_GO_SPEED = 0.5
+
+# 직진 관련 상수
+MAX_SPEED = 1.0
+MIN_SPEED = 0.2
+DEFAULT_SPEED = 0.85
+TOO_CLOSE_DIST = 1000
+STABLE_MIN_DIST = 2000
+STABLE_MAX_DIST = 2500
+START_SPEED_DOWN_DIST = 2750
+TOO_FAR_DIST = 3000
+
+def drive(cx, frame, turn, speed, person_distance):
     # Target의 위치 파악(좌우 회전이 필요한 지)
-    if cx <= left_limit: 
-        key = 'turn_left' # bbox 중앙점 x좌푯값이 좌측 회전 한곗값(left_limit)보다 작으면 좌회전
-        turn = 1
-    elif cx >= right_limit: 
-        key = 'turn_right' # bbox 중앙점 x좌푯값이 우측 회전 한곗값(right_limit)보다 크면 우회전
-        turn = 1
-    else: # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
-        key = 'go'
-
-    return key, speed, turn
-
-def drive2(cx, left_limit, right_limit, turn, frame, speed, max_speed, max_turn):
-    # 회전 속도가 빠른 구간
-    speed_up_area = 50
-    
-    # Target의 위치 파악(좌우 회전이 필요한 지)
-    if cx <= left_limit: 
-        key = 'go_turn_left' # bbox 중앙점 x좌푯값이 좌측 회전 한곗값(left_limit)보다 작으면 좌회전
-    elif cx < speed_up_area:
-        key = 'go_turn_left'
-        speed = max_speed
-        turn = max_turn
-    elif cx >= right_limit: 
-        key = 'go_turn_right' # bbox 중앙점 x좌푯값이 우측 회전 한곗값(right_limit)보다 크면 우회전
-    elif cx > frame.shape[1] - speed_up_area:
-        key = 'go_turn_right'
-        speed = max_speed
-        turn = max_turn
-    else: # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
-        key = 'go'
-
-    return key, speed, turn
-
-def drive3(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance, start_speed_down=300):
-    # 회전 속도가 빠른 구간
-    speed_up_area = 50
-    
-    # Target의 위치 파악(좌우 회전이 필요한 지)
-    if cx <= left_limit: 
-        key = 'go_turn_left' # bbox 중앙점 x좌푯값이 좌측 회전 한곗값(left_limit)보다 작으면 좌회전
-    elif cx < speed_up_area:
-        key = 'go_turn_left'
-        speed = max_speed
-        turn = max_turn
-    elif cx >= right_limit: 
-        key = 'go_turn_right' # bbox 중앙점 x좌푯값이 우측 회전 한곗값(right_limit)보다 크면 우회전
-    elif cx > frame.shape[1] - speed_up_area:
-        key = 'go_turn_right'
-        speed = max_speed
-        turn = max_turn
-    else: # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
-        if stable_min_dist <= person_distance <= stable_max_dist:
-            key = 'go' # 로봇과 사람과의 거리(person_distance)가 2.0(stable_min_dist) ~ 2.5m(stable_max_dist)라면 전진
-        else: # stable_max_dist 초과일 경우, 거리에 따른 속도 증감
-            remaining_distance = person_distance - stable_max_dist # 안정 거리 최대값과 사람과의 거리의 차이, 이를 이용해 얼만큼 속도를 증감해야하는 지 정하는 요소
-            """
-            기본 컨셉은 remaining_distance 300 이상이면 속도 증가, 미만이면 속도 감소(대신 속도 최대값은 0.8, 최소값은 0.5로 설정한다)
-            예를 들어 사람과 로봇의 거리가 2500이라면 remaining_distance 500이 된다. 로봇은 speed_fremaining_distanceactor이 200이 될 때까지 속도 증가(최댓값은 2.5로 설정함.)
-            remaining_distance 200 미만이 되는 순간 속도 감소(최솟값은 1.2로 설정)
-            그리고 remaining_distance 0이 되면 안정 구간 진입이므로 속도는 1로 설정됨.
-            
-            <아래는 로봇과 사람이 4.0m 떨어진 상황>
-                                                                                                           [사람]
-            [로봇] <----위험(stop)---->|<---직진(go)--->|<-------------속도 증가------------->|<---속도 감소--->|
-                                     2.0m             2.5m                                 3.7m              4.0m
-            """
-            if remaining_distance >= start_speed_down: # speed up
-                if speed < max_speed:
-                    key = 'linear_speed_up'
-                else:
-                    key = 'go'
-                    speed = max_speed
-            else: # speed down
-                if speed > min_speed:
-                    key = 'linear_speed_down'
-                else:
-                    key = 'go'
-                    speed = min_speed
-    return key, speed, turn
-
-def drive4(cx, left_limit, right_limit, turn, frame, speed, max_speed, min_speed, max_turn, stable_min_dist, stable_max_dist, person_distance, start_speed_down=400):
-    # 회전 속도가 빠른 구간
-    speed_up_area = 70
-    edge_turn = 0.2 # 0.6 => 0.2
-
-    speed_default = 0.2 # 0.85 => 0.2
-    turn_default = 0.2 # 0.6 => 0.2
-
-    # Target의 위치 파악(좌우 회전이 필요한 지)
-    if cx <= left_limit: 
-        key = 'go_turn_left' # bbox 중앙점 x좌푯값이 좌측 회전 한곗값(left_limit)보다 작으면 좌회전
-        speed = 0.2 # 0.5 => 0.2
-        turn = turn_default
-    elif cx < speed_up_area:
+    # |<------->|<------------->|<------->|<------->|<------------->|<------->|
+    #      TURN_LIMIT      GO_TURN_LIMIT     (1-GO_TURN_LIMIT)(1-TURN_LIMIT)      
+    p_cx = cx / frame.shape[1]
+    if p_cx <= TURN_LIMIT:
         key = 'turn_left'
-        turn = edge_turn
-    elif cx >= right_limit: 
-        key = 'go_turn_right' # bbox 중앙점 x좌푯값이 우측 회전 한곗값(right_limit)보다 크면 우회전
-        speed = 0.2 # 0.5 => 0.2
-        turn = turn_default
-    elif cx > frame.shape[1] - speed_up_area:
+        turn = EDGE_TURN
+    elif p_cx <= GO_TURN_LIMIT:
+        key = 'go_turn_left'
+        speed = DEFAULT_GO_SPEED
+        turn = DEFAULT_TURN_SPEED
+    elif p_cx >= (1 - GO_TURN_LIMIT):
+        key = 'go_turn_left'
+        speed = DEFAULT_GO_SPEED
+        turn = DEFAULT_TURN_SPEED
+    elif p_cx >= (1 - TURN_LIMIT):
         key = 'turn_right'
-        turn = edge_turn
-    else: # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
-        if stable_min_dist <= person_distance <= stable_max_dist:
-            key = 'go' # 로봇과 사람과의 거리(person_distance)가 2.0(stable_min_dist) ~ 2.5m(stable_max_dist)라면 전진
-            speed = speed_default
-        else: # stable_max_dist 초과일 경우, 거리에 따른 속도 증감
-            remaining_distance = person_distance - stable_max_dist # 안정 거리 최대값과 사람과의 거리의 차이, 이를 이용해 얼만큼 속도를 증감해야하는 지 정하는 요소
-            """
-            기본 컨셉은 remaining_distance 300 이상이면 속도 증가, 미만이면 속도 감소(대신 속도 최대값은 0.8, 최소값은 0.5로 설정한다)
-            예를 들어 사람과 로봇의 거리가 2500이라면 remaining_distance 500이 된다. 로봇은 speed_fremaining_distanceactor이 200이 될 때까지 속도 증가(최댓값은 2.5로 설정함.)
-            remaining_distance 200 미만이 되는 순간 속도 감소(최솟값은 1.2로 설정)
-            그리고 remaining_distance 0이 되면 안정 구간 진입이므로 속도는 1로 설정됨.
-            
-            <아래는 로봇과 사람이 4.0m 떨어진 상황>
-                                                                                                           [사람]
-            [로봇] <----위험(stop)---->|<---직진(go)--->|<-------------속도 증가------------->|<---속도 감소--->|
-                                     2.0m             2.5m                                 3.7m              4.0m
-            """
-            if remaining_distance >= start_speed_down: # speed up
-                if speed < max_speed:
-                    key = 'linear_speed_up'
-                else:
-                    key = 'go'
-                    speed = max_speed
-            else: # speed down
-                if speed > min_speed:
-                    key = 'linear_speed_down'
-                else:
-                    key = 'go'
-                    speed = min_speed
+        turn = EDGE_TURN
+        
+    # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
+    # [로봇]|<----정지---->|<----속도 감소---->|<------직진------>|<-------속도 증가------->|<------속도 감소------>|<-----정지----- ...
+    #      0      TOO_CLOSE_DIST   STABLE_MIN_DIST   STABLE_MAX_DIST       START_SPEED_DOWN_DIST      TOO_FAR_DIST
+    else:
+        if person_distance <= TOO_CLOSE_DIST: 
+            key = 'stop'
+        elif person_distance < STABLE_MAX_DIST:
+            if speed > MIN_SPEED:
+                key = 'linear_speed_down'
+            else:
+                key = 'go'
+                speed = MIN_SPEED
+        elif person_distance <= STABLE_MAX_DIST:
+            key = 'go'
+            speed = DEFAULT_SPEED
+        elif person_distance <= START_SPEED_DOWN_DIST:
+            if speed < MAX_SPEED:
+                speed = 'linear_speed_up'
+            else:
+                key = 'go'
+                speed = MAX_SPEED
+        elif person_distance < TOO_FAR_DIST:
+            if speed > MIN_SPEED:
+                key = 'linear_speed_down'
+            else:
+                key = 'go'
+                speed = MIN_SPEED
+        else: key = 'stop'
+        
     return key, speed, turn
