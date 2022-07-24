@@ -110,19 +110,19 @@ def check_meaningful_gesture(target, frame, mode, closer, fist_time, pointing_ti
             else: # 처음 설정이 아니고, 다음 1초 후 프레임에서도 인식
                 if now_time - fist_time >= TIME: # 의미 있는 제스쳐
                     mode = 1 - mode # 로봇의 주행 상태 toggle
-                    ##### 주행 조작 코드 추가 ##### 
+                    ##### 주행 조작 코드 ##### 
                     fist_time = 0
                     inactive_time = now_time # 휴면 시작 시간 저장
                     
             pointing_time = 0 # pointing 초기화
         
-        # pointing 인식 ---> 나중에
+        # pointing 인식
         elif hand_gesture == "pointing":
             if pointing_time == 0:
                 pointing_time = now_time
             else:
                 if now_time - pointing_time >= TIME:
-                    ##### closer 주행 조작 코드 추가 ##### 
+                    ##### 주행 조작 코드 ##### 
                     closer = True
                     pointing_time = 0
                     closer_time = now_time
@@ -133,7 +133,7 @@ def check_meaningful_gesture(target, frame, mode, closer, fist_time, pointing_ti
         # 어떤 손동작도 인식하지 못함 (normal) 
         else:
             fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
-            ##### 주행 조작 코드?? #####
+            ##### 주행 조작 코드 #####
     return mode, closer, fist_time, pointing_time, inactive_time, closer_time
 
 
@@ -223,7 +223,6 @@ def main(_argv):
             # 어떤 손동작도 인식하지 못함 (normal) 
             else:
                 fist_time, pointing_time = 0, 0 # 모든 손동작 인식 시작 시간 초기화
-                ##### 주행 조작 코드 #####
 
     # Definition of the parameters
     max_cosine_distance = 0.4
