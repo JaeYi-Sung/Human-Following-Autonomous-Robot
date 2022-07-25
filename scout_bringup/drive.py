@@ -36,8 +36,8 @@ def drive(cx, frame, turn, speed, person_distance):
         turn = EDGE_TURN
         
     # 좌/우 회전이 아니라면 직진, 거리에 따른 속도 제어
-    # [로봇]|<----정지---->|<----속도 감소---->|<------직진------>|<-------속도 증가------->|<------속도 감소------>|<-----정지----- ...
-    #      0      TOO_CLOSE_DIST   STABLE_MIN_DIST   STABLE_MAX_DIST       START_SPEED_DOWN_DIST      TOO_FAR_DIST
+    # [로봇]|<----정지---->|<----속도 감소---->|<------직진------>|<-----속도 증가----->|<----속도 감소---->|<-----정지----- ...
+    #      0      TOO_CLOSE_DIST   STABLE_MIN_DIST   STABLE_MAX_DIST   START_SPEED_DOWN_DIST  TOO_FAR_DIST
     else:
         if person_distance <= TOO_CLOSE_DIST: 
             key = 'stop'
