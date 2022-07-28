@@ -339,7 +339,6 @@ def main(_argv):
                 else: # 인식된 손동작 있는 경우
                     if gesture_time[gesture_idx] == 0: gesture_time[gesture_idx] = now_time # 처음 인식했다면, 인식 시작 시간 저장
                     elif now_time - gesture_time[gesture_idx] >= TIME: # 처음 설정이 아니고, 의미 있는 시간인 1초 동안 프레임에서 인식
-                        mode[gesture_idx] = 1 - mode[gesture_idx] # 주행 상태 변경 toggle
                         if gesture_idx == 0: # fist인 경우
                             mode = 1 - mode
                         else: # pointing인 경우
