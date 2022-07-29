@@ -7,8 +7,8 @@
   - CUDA 10.2, cuDNN 7.6.5, NVIDIA Driver 470
   - Anaconda, Python 3.7.11, OpenCV 4.2, Jupyter Lab, VSCode
 - 로봇
-  - NVIDIA Jetson TX2, JetPack 4.3, ROS Melodic
-  - CUDA 10.2, cuDNN 8.0.0
+  - NVIDIA Jetson xavier, JetPack 4.4
+  - CUDA 10.2, cuDNN 8.0.0, ROS Melodic
   - Python 3.6.9, Tensorflow 2.3.1
 
 ### Technology
