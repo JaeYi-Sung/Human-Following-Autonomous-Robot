@@ -40,3 +40,4 @@
   - Deepsort Algorithm으로 타깃 마커를 가진 사람에게 Track id 부여 후 Tracking
   - 타깃 마커 스위칭 기능 구현
 #### 자연스러운 손동작으로 로봇 제어
+- 손동작 명령어: `stop`, `closer`
