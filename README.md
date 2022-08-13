@@ -41,3 +41,4 @@
   - 타깃 마커 스위칭 기능 구현
 #### 자연스러운 손동작으로 로봇 제어
 - 손동작 명령어: `stop`, `closer`
+- 특정된 사람의 body skeleton과 hand skeleton detection
