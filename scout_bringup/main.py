@@ -157,7 +157,6 @@ def main(_argv):
     # 주행 상태 설정 변수
     mode = 0 # 정지 상태 (1: 주행 상태, 0: 정지 상태)
     closer = False
-    # fist_time, pointing_time, inactive_time, closer_time = 0, 0, 0, 0 # fist 인식 시작 시간, pointing 인식 시작 시간, 휴면 인식 시작 시간
 
     # initialize deep sort
     encoder = gdet.create_box_encoder(os.getenv('HOME') + '/wego_ws/src/scout_ros/scout_bringup/model_data/mars-small128.pb', batch_size=1)
@@ -202,7 +201,6 @@ def main(_argv):
 
         if return_value:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
         else:
             print('Video has ended or failed, try a different video format!')
             break
@@ -228,7 +226,7 @@ def main(_argv):
         
         # 다시 track id 설정
         target_marker_bboxes = []
-        if target.changed or target.lost_track_id:
+        if target.changed:
             detections_marker = detect_objects(infer_marker, batch_data, frame, encoder, idx_to_name_marker)
             # draw bbox for all detections and find target marker's bbox
             target_class = target.marker
@@ -253,7 +251,7 @@ def main(_argv):
         
         if tracker_person.lost:
             go.sendMsg(frame_num % 2)
-            target.lost_track_id = True
+            target.changed = True
             key = 'stop'
             print('There are no objects to track.')
             return
@@ -271,12 +269,12 @@ def main(_argv):
             
             # target marker가 변한 경우, track.id 설정 후 그 사람 tracking
             # 아니라면, 기존의 track.id를 가진 사람 tracking
-            if target.changed or target.lost_track_id:
+            if target.changed:
                 for marker_bbox in target_marker_bboxes:
                     if marker_bbox[0] >= bbox[0] and marker_bbox[1] >= bbox[1] and marker_bbox[2] <= bbox[2] and marker_bbox[3] <= bbox[3]:
                         target.set_track_id(track_id)
                         break
-            
+
             if target.changed: continue # target marker 바뀌고 다시 track id 설정 안된 경우, track 하지 않기
             if track_id != target.track_id: continue  # target id에 해당하지 않은 사람 객체 무시
             
@@ -351,7 +349,7 @@ def main(_argv):
             break # 타깃 사람 찾으면 break
         
         if lost: 
-            target.lost_track_id = True
+            target.changed = True
             key = 'stop'
             print('There are no objects to track.')
         
