@@ -252,9 +252,9 @@ def main(_argv):
         if tracker_person.lost:
             go.sendMsg(frame_num % 2)
             target.changed = True
+            target.track_id = None
             key = 'stop'
             print('There are no objects to track.')
-            return
         
         # 추적 알고리즘
         go.sendMsg(1)
@@ -349,7 +349,9 @@ def main(_argv):
             break # 타깃 사람 찾으면 break
         
         if lost: 
+            go.sendMsg(frame_num % 2)
             target.changed = True
+            target.track_id = None
             key = 'stop'
             print('There are no objects to track.')
         
@@ -377,7 +379,7 @@ def main(_argv):
             print(f"key 'ESC' or 'q' 입력 ---> 끝내기")
             break
         elif 48 <= keyboard <= 52: # 0, 1, 2, 3, 4 키보드 입력으로 타겟 마커 변경
-            target_marker = str((keyboard - 48) * 10)
+            target_marker = idx_to_name_marker[cv2.waitKey(0) & 0xFF - 48]
             print(f"key '{chr(keyboard)}' 입력 ---> 마커 '{target_marker}' 선택")
             target.set_target(target_marker)
         
