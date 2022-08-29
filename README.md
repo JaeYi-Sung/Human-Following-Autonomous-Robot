@@ -41,5 +41,7 @@
 #### 자연스러운 손동작으로 로봇 제어
 - 손동작 명령어: `stop`
 - 특정된 사람의 body skeleton과 hand skeleton detection
-- 사용한 모델: trt_pose (https://github.com/NVIDIA-AI-IOT/trt_pose)
+- 사용한 모델
+  - trt_pose (https://github.com/NVIDIA-AI-IOT/trt_pose)
+  - trt_pose_hand (https://github.com/NVIDIA-AI-IOT/trt_pose_hand)
 
