@@ -4,6 +4,8 @@ moveBindings = {
     'turn_left':(0,0,0,1), # j
     'turn_right':(0,0,0,-1), # l
     'go_turn_left':(1,0,0,1), # u
+    'linear_speed_up':(1,0,0,0),   # w
+    'linear_speed_down':(1,0,0,0),   # w
     # 'back':(-1,0,0,0), # ,
     # 'back_right':(-1,0,0,1), # .
     # 'back_left':(-1,0,0,-1), # m
@@ -35,10 +37,10 @@ def key_move(key, x, y, z, th, speed, turn):
         y = moveBindings[key][1]
         z = moveBindings[key][2]
         th = moveBindings[key][3]
-    elif key in speedBindings.keys():
+    if key in speedBindings.keys():
         speed = speed * speedBindings[key][0]
         turn = turn * speedBindings[key][1]
-    else:
+    if key == 'stop':
         x = 0
         y = 0
         z = 0
