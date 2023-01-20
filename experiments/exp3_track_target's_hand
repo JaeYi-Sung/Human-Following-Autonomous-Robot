@@ -186,23 +186,36 @@ def execute_human(img, frame, bbox_frame, model_trt_human, parse_objects_human, 
     cmap, paf = model_trt_human(data)
     cmap, paf = cmap.detach().cpu(), paf.detach().cpu()
     counts, objects, peaks = parse_objects_human(cmap, paf) #, cmap_threshold=0.15, link_threshold=0.15)
-    check_idx = (17, 7, 8, 9, 10) # mid_shoulder, left_elbow, right_elbow, left_wrist, right_wrist)
-    target_kp = None
+    #check_idx = (17, 7, 8, 9, 10) # mid_shoulder, left_elbow, right_elbow, left_wrist, right_wrist)
+    check_idx = (17, 8, 10)
+    #target_kp = None
     check_kp = dict() # 모든 사람의 중요한 신체 부위
     bbox = [bbox[0] / 640, bbox[1] / 480, bbox[2] / 640, bbox[3] / 480]
+    midbbox = (bbox[0] + bbox[2]) / 2
+    min_dist = 123456789
+    target_idx = 0
+
     for p_idx in range(counts[0]): # 사람 수 만큼
         #print(f"counts[0]: {counts[0]}")
         keypoints = get_keypoints(objects[0][p_idx], peaks[0], check_idx) # p_idx 번째 사람
-        
+        mid2shou = 0
+    
         if 17 not in keypoints: continue
-        if (bbox[0] < keypoints[17][1] < bbox[2]) and (bbox[1] < keypoints[17][0] < bbox[3]):
-            for key, val in keypoints.items():
-                x = round(val[1] * XCOOR)
-                y = round(val[0] * YCOOR)
-                cv2.circle(bbox_frame, (x, y), 3, color, 2)
-                cv2.putText(bbox_frame, "%d" % int(key), (x + 5, y),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
-                check_kp[key] = (x, y)
-            return check_kp
+        else:
+            mid2shou = abs(midbbox - keypoints[17][1])
+            if mid2shou < min_dist:
+                min_dist = mid2shou
+                target_idx = p_idx
+
+    target_kp = get_keypoints(objects[0][target_idx], peaks[0], check_idx)
+    if (bbox[0] < target_kp[17][1] < bbox[2]) and (bbox[1] < target_kp[17][0] < bbox[3]):
+        for key, val in target_kp.items():
+            x = round(val[1] * XCOOR)
+            y = round(val[0] * YCOOR)
+            cv2.circle(bbox_frame, (x, y), 3, color, 2)
+            cv2.putText(bbox_frame, "%d" % int(key), (x + 5, y),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
+            check_kp[key] = (x, y)
+        return check_kp
     return check_kp
 
 
@@ -341,17 +354,18 @@ def main(_argv):
                     cv2.imwrite(FLAGS.results + image_file, bbox_frame)
                     
                     gesture_idx = 0
-                    if 7 in check_kp and 9 in check_kp: # left arm
-                        cropped_frame = crop_hand(frame, check_kp[7], check_kp[9])
-                        cropped_frame = cv2.rotate(cropped_frame, cv2.ROTATE_180)
-                        # cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
-                        cropped_frame = cv2.resize(cropped_frame, (TRT_POSE_SIZE, TRT_POSE_SIZE))
-                        gesture_idx = max(gesture_idx, execute_hand(cropped_frame, frame, model_trt_hand, preprocessdata_left, parse_objects_hand, draw_objects_hand)) # 리턴 값 받기, 인수 변경
-                        cropped_result = np.asarray(cropped_frame)
-                        # cropped_result = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
-                        cv2.imwrite(FLAGS.results + os.path.splitext(image_file)[0] + '_cropped_left' + os.path.splitext(image_file)[1], cropped_result)
+                    # if 7 in check_kp and 9 in check_kp: # left arm
+                    #     cropped_frame = crop_hand(frame, check_kp[7], check_kp[9])
+                    #     cropped_frame = cv2.rotate(cropped_frame, cv2.ROTATE_180)
+                    #     # cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
+                    #     cropped_frame = cv2.resize(cropped_frame, (TRT_POSE_SIZE, TRT_POSE_SIZE))
+                    #     gesture_idx = max(gesture_idx, execute_hand(cropped_frame, frame, model_trt_hand, preprocessdata_left, parse_objects_hand, draw_objects_hand)) # 리턴 값 받기, 인수 변경
+                    #     cropped_result = np.asarray(cropped_frame)
+                    #     # cropped_result = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
+                    #     cv2.imwrite(FLAGS.results + os.path.splitext(image_file)[0] + '_cropped_left' + os.path.splitext(image_file)[1], cropped_result)
 
-                    if gesture_idx == 0 and 8 in check_kp and 10 in check_kp: # right arm
+                    # if gesture_idx == 0 and 8 in check_kp and 10 in check_kp: # right arm
+                    if 8 in check_kp and 10 in check_kp:
                         cropped_frame = crop_hand(frame, check_kp[8], check_kp[10])
                         cropped_frame = cv2.rotate(cropped_frame, cv2.ROTATE_180)
                         # cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
