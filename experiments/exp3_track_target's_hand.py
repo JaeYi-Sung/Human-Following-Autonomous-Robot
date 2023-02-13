@@ -299,6 +299,7 @@ def main(_argv):
     for image_file in os.listdir(FLAGS.images):
         
         frame_num += 1
+        gesture_idx = 0
         #print(f"image_file: {image_file}")
 
         full_path = FLAGS.images + image_file
@@ -353,7 +354,6 @@ def main(_argv):
                     check_kp = execute_human(image_data, frame, bbox_frame, model_trt_human, parse_objects_human, bbox)
                     cv2.imwrite(FLAGS.results + image_file, bbox_frame)
                     
-                    gesture_idx = 0
                     # if 7 in check_kp and 9 in check_kp: # left arm
                     #     cropped_frame = crop_hand(frame, check_kp[7], check_kp[9])
                     #     cropped_frame = cv2.rotate(cropped_frame, cv2.ROTATE_180)
@@ -364,8 +364,8 @@ def main(_argv):
                     #     # cropped_result = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
                     #     cv2.imwrite(FLAGS.results + os.path.splitext(image_file)[0] + '_cropped_left' + os.path.splitext(image_file)[1], cropped_result)
 
-                    # if gesture_idx == 0 and 8 in check_kp and 10 in check_kp: # right arm
-                    if 8 in check_kp and 10 in check_kp:
+                    if gesture_idx == 0 and 8 in check_kp and 10 in check_kp: # right arm
+                    # if 8 in check_kp and 10 in check_kp:
                         cropped_frame = crop_hand(frame, check_kp[8], check_kp[10])
                         cropped_frame = cv2.rotate(cropped_frame, cv2.ROTATE_180)
                         # cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
@@ -375,8 +375,8 @@ def main(_argv):
                         cropped_result = np.asarray(cropped_frame)
                         # cropped_result = cv2.cvtColor(cropped_frame, cv2.COLOR_RGB2BGR)
                         cv2.imwrite(FLAGS.results + os.path.splitext(image_file)[0] + '_cropped_right' + os.path.splitext(image_file)[1], cropped_result)
-
-                    count += gesture_idx
+                        count += gesture_idx
+                    print(f'frame: {frame_num}, count: {count}')
                     break
         
     print("\n=============================")
