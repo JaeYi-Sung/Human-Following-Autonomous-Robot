@@ -1,5 +1,29 @@
-# RealTime-Object-Detection
-손동작 인식 기반 자율주행 로봇 개발
+# Nursing-Assistant-Robot
+간호사들의 신체적 노동을 줄이고 업무의 효율성을 높일 수 있는 Human-Following 로봇
+
+### Algorithm
+#### Phase1. 사용자를 특정하여 인식하기
+
+- 로봇이 따라가야 하는 사용자를 인식 : Object Detection 모델을 이용하여 패턴과 사람을 함께 인식
+
+[알고리즘]
+
+1. 카메라 depth 정보를 통해 특정 거리 이상 가까워진 패턴을 메인 패턴으로 인식
+2. 패턴을 인식한 후 해당 패턴이 포함된 사람 bbox를 마스터로 인식
+
+#### Phase2. 사용자 트레킹
+
+- 로봇이 인식한 사용자를 따라감 : 카메라의 depth 정보를 통해 (사람 ~ 로봇)간 거리 도출하고 사람 위치를 기반으로 로봇의 default 위치를 설정
+
+[알고리즘]
+
+1. 카메라 정보를 통해 사람의 POS를 기반으로 로봇의 default 위치 지정
+2. Deepsort 알고리즘
+
+#### Phase3. 사용자 - 로봇 인터렉션
+
+- 로봇이 사용자의 손 동작을 인식해서 간단한 명령을 수행 : STOP (STAY) / APPROACH / GO HOME
+  
 
 ### Development Environment
 - 딥러닝 모델 학습 서버 환경
